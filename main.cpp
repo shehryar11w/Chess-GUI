@@ -17,7 +17,6 @@ int main()
 {
     // Create the window
     sf::RenderWindow window(sf::VideoMode({488, 512}), "Play Chess");
-
     // Load the chessboard texture
     sf::Texture boardTexture;
     if (!boardTexture.loadFromFile("assets/BlankBoard.png"))
