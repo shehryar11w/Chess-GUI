@@ -4,6 +4,7 @@
 #include <map>
 #include <cctype>
 #include <iostream>
+using namespace std;
 
 const int TILE_SIZE = 80;
 const int BOARD_SIZE = 8;
@@ -17,10 +18,10 @@ struct Piece {
     bool isWhite;
 };
 
-std::vector<Piece> pieces;
+vector<Piece> pieces;
 Piece* selectedPiece = nullptr;
-std::vector<Vector2> validMoves;
-std::map<char, Texture2D> whiteTextures, blackTextures;
+vector<Vector2> validMoves;
+map<char, Texture2D> whiteTextures, blackTextures;
 bool isWhiteTurn = true; // White moves first
 
 void LoadTextures() {
@@ -55,7 +56,7 @@ void SetupBoard() {
         for (int x = 0; x < BOARD_SIZE; x++) {
             char c = layout[y][x];
             if (c != '.') {
-                bool isWhite = std::isupper(c);  // White pieces are uppercase
+                bool isWhite = isupper(c);  // White pieces are uppercase
                 Texture2D texture = isWhite ? whiteTextures[toupper(c)] : blackTextures[toupper(c)];
                 pieces.push_back({ x, y, texture, isWhite });
             }
@@ -103,13 +104,13 @@ char GetPieceType(const Piece* piece) {
     return ' ';
 }
 
-std::vector<Vector2> GetValidMoves(Piece* piece) {
-    std::vector<Vector2> moves;
+vector<Vector2> GetValidMoves(Piece* piece) {
+    vector<Vector2> moves;
     if (!piece) return moves;
 
     int x = piece->x;
     int y = piece->y;
-    
+
     char pieceType = GetPieceType(piece);
 
     // Helper lambda to check if a position is within board bounds
@@ -170,7 +171,7 @@ std::vector<Vector2> GetValidMoves(Piece* piece) {
         }
         case 'R': { // Rook
             // Move horizontally and vertically
-            for (auto [dx, dy] : std::vector<std::pair<int, int>>{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}) {
+            for (auto [dx, dy] : vector<pair<int, int>>{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}) {
                 for (int i = 1; i < BOARD_SIZE; i++) {
                     if (!tryAddMove(x + dx * i, y + dy * i)) break;
                 }
@@ -179,15 +180,15 @@ std::vector<Vector2> GetValidMoves(Piece* piece) {
         }
         case 'N': { // Knight
             // L-shaped moves
-            for (auto [dx, dy] : std::vector<std::pair<int, int>>{{1, 2}, {2, 1}, {2, -1}, {1, -2},
-                                                                 {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}}) {
+            for (auto [dx, dy] : vector<pair<int, int>>{{1, 2}, {2, 1}, {2, -1}, {1, -2},
+                                                     {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}}) {
                 tryAddMove(x + dx, y + dy);
             }
             break;
         }
         case 'B': { // Bishop
             // Move diagonally
-            for (auto [dx, dy] : std::vector<std::pair<int, int>>{{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}) {
+            for (auto [dx, dy] : vector<pair<int, int>>{{1, 1}, {1, -1}, {-1, -1}, {-1, 1}}) {
                 for (int i = 1; i < BOARD_SIZE; i++) {
                     if (!tryAddMove(x + dx * i, y + dy * i)) break;
                 }
@@ -196,8 +197,8 @@ std::vector<Vector2> GetValidMoves(Piece* piece) {
         }
         case 'Q': { // Queen (combination of Rook and Bishop moves)
             // Move in all directions
-            for (auto [dx, dy] : std::vector<std::pair<int, int>>{{0, 1}, {1, 0}, {0, -1}, {-1, 0},
-                                                                 {1, 1}, {1, -1}, {-1, -1}, {-1, 1}}) {
+            for (auto [dx, dy] : vector<pair<int, int>>{{0, 1}, {1, 0}, {0, -1}, {-1, 0},
+                                                     {1, 1}, {1, -1}, {-1, -1}, {-1, 1}}) {
                 for (int i = 1; i < BOARD_SIZE; i++) {
                     if (!tryAddMove(x + dx * i, y + dy * i)) break;
                 }
@@ -206,8 +207,8 @@ std::vector<Vector2> GetValidMoves(Piece* piece) {
         }
         case 'K': { // King
             // Move one square in any direction
-            for (auto [dx, dy] : std::vector<std::pair<int, int>>{{0, 1}, {1, 1}, {1, 0}, {1, -1},
-                                                                 {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}}) {
+            for (auto [dx, dy] : vector<pair<int, int>>{{0, 1}, {1, 1}, {1, 0}, {1, -1},
+                                                     {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}}) {
                 tryAddMove(x + dx, y + dy);
             }
             break;
@@ -227,28 +228,27 @@ void SelectPiece(int x, int y) {
         }
     }
 
-    // If clicking on the same piece that's already selected, deselect it
+    // If clicking on the same piece that's already selected, just deselect it
     if (selectedPiece && clickedPiece && selectedPiece == clickedPiece) {
         selectedPiece = nullptr;
         validMoves.clear();
         return;
     }
 
+    // Clear current selection
+    selectedPiece = nullptr;
+    validMoves.clear();
+
     // If clicking on a piece of the current player's color, select it
     if (clickedPiece && clickedPiece->isWhite == isWhiteTurn) {
         selectedPiece = clickedPiece;
         validMoves = GetValidMoves(selectedPiece);
-        return;
     }
-
-    // If clicking on an empty square or opponent's piece, deselect current piece
-    selectedPiece = nullptr;
-    validMoves.clear();
 }
 
 void MovePiece(int x, int y) {
     if (!selectedPiece) return;
-    
+
     // Check if it's the correct player's turn
     if (selectedPiece->isWhite != isWhiteTurn) {
         selectedPiece = nullptr;
@@ -309,7 +309,7 @@ int main() {
     SetupBoard();
     
     while (!WindowShouldClose()) {
-        // Handle left click for piece selection, movement, and deselection
+        // Handle left click for piece selection and movement
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mousePos = GetMousePosition();
             if (mousePos.y < BOARD_SIZE * TILE_SIZE) {
@@ -317,16 +317,22 @@ int main() {
                 int y = (int)(mousePos.y / TILE_SIZE);
                 
                 if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
-                    // Check if clicking on the same piece
-                    if (selectedPiece && selectedPiece->x == x && selectedPiece->y == y) {
-                        // Deselect the piece
-                        selectedPiece = nullptr;
-                        validMoves.clear();
-                    }
-                    else if (selectedPiece) {
-                        MovePiece(x, y);
-                    }
-                    else {
+                    if (selectedPiece) {
+                        // Try to move if it's a valid move square
+                        bool isValidMove = false;
+                        for (const auto& move : validMoves) {
+                            if ((int)move.x == x && (int)move.y == y) {
+                                isValidMove = true;
+                                break;
+                            }
+                        }
+                        
+                        if (isValidMove) {
+                            MovePiece(x, y);
+                        } else {
+                            SelectPiece(x, y);  // This will handle deselection and new selection
+                        }
+                    } else {
                         SelectPiece(x, y);
                     }
                 }
@@ -345,6 +351,21 @@ int main() {
                 TILE_SIZE, TILE_SIZE,
                 ColorAlpha(YELLOW, 0.5f)
             );
+            
+            // Highlight squares of pieces that can be captured in red
+            for (const auto& move : validMoves) {
+                for (const auto& piece : pieces) {
+                    if (piece.x == (int)move.x && piece.y == (int)move.y) {
+                        DrawRectangle(
+                            piece.x * TILE_SIZE,
+                            piece.y * TILE_SIZE,
+                            TILE_SIZE, TILE_SIZE,
+                            ColorAlpha(RED, 0.5f)
+                        );
+                        break;
+                    }
+                }
+            }
         }
         
         // Highlight valid moves
