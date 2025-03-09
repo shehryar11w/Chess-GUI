@@ -228,9 +228,7 @@ void SelectPiece(int x, int y) {
     }
 
     // If clicking on the same piece that's already selected, deselect it
-    if (selectedPiece && clickedPiece && 
-        selectedPiece->x == x && 
-        selectedPiece->y == y) {
+    if (selectedPiece && clickedPiece && selectedPiece == clickedPiece) {
         selectedPiece = nullptr;
         validMoves.clear();
         return;
@@ -304,23 +302,33 @@ Vector2 GetCenteredPiecePosition(const Piece& piece) {
 }
 
 int main() {
-    InitWindow(BOARD_SIZE * TILE_SIZE, BOARD_SIZE * TILE_SIZE + 60, "Chess with Raylib");  // Increased height to 60
+    InitWindow(BOARD_SIZE * TILE_SIZE, BOARD_SIZE * TILE_SIZE + 60, "Chess with Raylib");
     SetTargetFPS(60);
     
     LoadTextures();
     SetupBoard();
     
     while (!WindowShouldClose()) {
+        // Handle left click for piece selection, movement, and deselection
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mousePos = GetMousePosition();
-            // Ensure we're only processing clicks on the board
             if (mousePos.y < BOARD_SIZE * TILE_SIZE) {
                 int x = (int)(mousePos.x / TILE_SIZE);
                 int y = (int)(mousePos.y / TILE_SIZE);
                 
                 if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
-                    if (selectedPiece) MovePiece(x, y);
-                    else SelectPiece(x, y);
+                    // Check if clicking on the same piece
+                    if (selectedPiece && selectedPiece->x == x && selectedPiece->y == y) {
+                        // Deselect the piece
+                        selectedPiece = nullptr;
+                        validMoves.clear();
+                    }
+                    else if (selectedPiece) {
+                        MovePiece(x, y);
+                    }
+                    else {
+                        SelectPiece(x, y);
+                    }
                 }
             }
         }
