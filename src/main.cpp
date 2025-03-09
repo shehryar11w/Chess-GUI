@@ -3,6 +3,7 @@
 #include <iostream>
 #include <map>
 #include <cctype>
+#include <cmath>
 #include <iostream>
 using namespace std;
 
@@ -11,6 +12,14 @@ const int BOARD_SIZE = 8;
 const Color LIGHT_SQUARE = RAYWHITE;
 const Color DARK_SQUARE = DARKGRAY;
 const Color MOVE_HIGHLIGHT = GREEN;
+
+// Add rotation animation variables
+float currentRotation = 0.0f;  // Current rotation angle
+float targetRotation = 0.0f;   // Target rotation angle
+const float ROTATION_SPEED = 5.0f;  // Degrees per frame
+
+// Add rotation state
+bool boardRotated = false;
 
 struct Piece {
     int x, y;
@@ -64,34 +73,68 @@ void SetupBoard() {
     }
 }
 
+// Add function to convert screen coordinates to board coordinates
+Vector2 ScreenToBoard(Vector2 screenPos) {
+    int x = (int)(screenPos.x / TILE_SIZE);
+    int y = (int)(screenPos.y / TILE_SIZE);
+    
+    if (boardRotated) {
+        x = BOARD_SIZE - 1 - x;
+        y = BOARD_SIZE - 1 - y;
+    }
+    
+    return {(float)x, (float)y};
+}
+
+// Modify BoardToScreen function to handle smooth rotation
+Vector2 BoardToScreen(int x, int y) {
+    float centerX = BOARD_SIZE * TILE_SIZE / 2.0f;
+    float centerY = BOARD_SIZE * TILE_SIZE / 2.0f;
+    
+    // Convert board coordinates to centered coordinates
+    float relX = (x + 0.5f) * TILE_SIZE - centerX;
+    float relY = (y + 0.5f) * TILE_SIZE - centerY;
+    
+    // Apply rotation
+    float radians = currentRotation * PI / 180.0f;
+    float rotX = relX * cosf(radians) - relY * sinf(radians);
+    float rotY = relX * sinf(radians) + relY * cosf(radians);
+    
+    // Convert back to screen coordinates
+    return {
+        rotX + centerX - TILE_SIZE/2,
+        rotY + centerY - TILE_SIZE/2
+    };
+}
+
 void DrawBoard() {
     // Draw squares
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
+            // Get actual position based on rotation
+            Vector2 pos = BoardToScreen(col, row);
+            
             // Draw square
             Color squareColor = (row + col) % 2 == 0 ? LIGHT_SQUARE : DARK_SQUARE;
-            DrawRectangle(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE, squareColor);
+            DrawRectangle(pos.x, pos.y, TILE_SIZE, TILE_SIZE, squareColor);
         }
     }
 
-    // Draw column letters (a-h) under the pawns
+    // Draw column letters (a-h)
     for (int col = 0; col < BOARD_SIZE; col++) {
-        char colLabel = 'a' + col;
+        char colLabel = boardRotated ? ('h' - col) : ('a' + col);
         char label[2] = {colLabel, '\0'};
+        Vector2 pos = BoardToScreen(col, BOARD_SIZE);
         int textWidth = MeasureText(label, 20);
-        int textX = col * TILE_SIZE + (TILE_SIZE - textWidth) / 2;
-        int textY = BOARD_SIZE * TILE_SIZE + 25;  // Moved down to 25 to avoid overlap
-        DrawText(label, textX, textY, 20, BLACK);
+        DrawText(label, pos.x + (TILE_SIZE - textWidth) / 2, pos.y + 25, 20, BLACK);
     }
 
-    // Draw row numbers (1-8) vertically on the left
+    // Draw row numbers (1-8)
     for (int row = 0; row < BOARD_SIZE; row++) {
-        char rowLabel = '8' - row;
+        char rowLabel = boardRotated ? ('1' + row) : ('8' - row);
         char label[2] = {rowLabel, '\0'};
-        int textWidth = MeasureText(label, 20);
-        int textX = 5;
-        int textY = row * TILE_SIZE + (TILE_SIZE - 20) / 2;
-        DrawText(label, textX, textY, 20, BLACK);
+        Vector2 pos = BoardToScreen(-1, row);
+        DrawText(label, 5, pos.y + (TILE_SIZE - 20) / 2, 20, BLACK);
     }
 }
 
@@ -273,8 +316,10 @@ void MovePiece(int x, int y) {
             selectedPiece->x = x;
             selectedPiece->y = y;
             
-            // Switch turns
+            // Switch turns and update target rotation
             isWhiteTurn = !isWhiteTurn;
+            boardRotated = !boardRotated;
+            targetRotation = boardRotated ? 180.0f : 0.0f;
             
             // Clear selection
             selectedPiece = nullptr;
@@ -294,10 +339,13 @@ Vector2 GetCenteredPiecePosition(const Piece& piece) {
     float offsetX = (TILE_SIZE - pieceWidth) / 2;
     float offsetY = (TILE_SIZE - pieceHeight) / 2;
     
+    // Get screen position based on board position
+    Vector2 pos = BoardToScreen(piece.x, piece.y);
+    
     // Return the centered position
     return {
-        piece.x * TILE_SIZE + offsetX,
-        piece.y * TILE_SIZE + offsetY
+        pos.x + offsetX,
+        pos.y + offsetY
     };
 }
 
@@ -309,12 +357,23 @@ int main() {
     SetupBoard();
     
     while (!WindowShouldClose()) {
+        // Update rotation animation
+        if (currentRotation != targetRotation) {
+            if (currentRotation < targetRotation) {
+                currentRotation = min(currentRotation + ROTATION_SPEED, targetRotation);
+            } else {
+                currentRotation = max(currentRotation - ROTATION_SPEED, targetRotation);
+            }
+        }
+
         // Handle left click for piece selection and movement
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mousePos = GetMousePosition();
             if (mousePos.y < BOARD_SIZE * TILE_SIZE) {
-                int x = (int)(mousePos.x / TILE_SIZE);
-                int y = (int)(mousePos.y / TILE_SIZE);
+                // Convert screen coordinates to board coordinates
+                Vector2 boardPos = ScreenToBoard(mousePos);
+                int x = (int)boardPos.x;
+                int y = (int)boardPos.y;
                 
                 if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
                     if (selectedPiece) {
@@ -345,9 +404,10 @@ int main() {
         
         // Highlight selected piece
         if (selectedPiece) {
+            Vector2 pos = BoardToScreen(selectedPiece->x, selectedPiece->y);
             DrawRectangle(
-                selectedPiece->x * TILE_SIZE,
-                selectedPiece->y * TILE_SIZE,
+                pos.x,
+                pos.y,
                 TILE_SIZE, TILE_SIZE,
                 ColorAlpha(YELLOW, 0.5f)
             );
@@ -356,9 +416,10 @@ int main() {
             for (const auto& move : validMoves) {
                 for (const auto& piece : pieces) {
                     if (piece.x == (int)move.x && piece.y == (int)move.y) {
+                        Vector2 capturePos = BoardToScreen((int)move.x, (int)move.y);
                         DrawRectangle(
-                            piece.x * TILE_SIZE,
-                            piece.y * TILE_SIZE,
+                            capturePos.x,
+                            capturePos.y,
                             TILE_SIZE, TILE_SIZE,
                             ColorAlpha(RED, 0.5f)
                         );
@@ -370,9 +431,10 @@ int main() {
         
         // Highlight valid moves
         for (auto move : validMoves) {
+            Vector2 pos = BoardToScreen((int)move.x, (int)move.y);
             DrawCircle(
-                move.x * TILE_SIZE + TILE_SIZE / 2,
-                move.y * TILE_SIZE + TILE_SIZE / 2,
+                pos.x + TILE_SIZE / 2,
+                pos.y + TILE_SIZE / 2,
                 10, MOVE_HIGHLIGHT
             );
         }
