@@ -1,9 +1,12 @@
 {
-  "C_Cpp.default.compilerPath": "C:/msys64/ucrt64/bin/g++.exe",
-  "files.associations": {
-    "deque": "cpp",
-    "string": "cpp",
-    "vector": "cpp",
-    "chrono": "cpp"
-  }
+	"files.exclude": {
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/CVS": true,
+		"**/.DS_Store": true,
+		"**/*.o": true,
+		"**/*.exe": true,
+	},
+	"C_Cpp.default.compilerPath": "C:/msys64/ucrt64/bin/g++.exe"
 }
