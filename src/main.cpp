@@ -13,11 +13,6 @@ const Color LIGHT_SQUARE = RAYWHITE;
 const Color DARK_SQUARE = DARKGRAY;
 const Color MOVE_HIGHLIGHT = GREEN;
 
-// Add rotation animation variables
-float currentRotation = 0.0f;  // Current rotation angle
-float targetRotation = 0.0f;   // Target rotation angle
-const float ROTATION_SPEED = 5.0f;  // Degrees per frame
-
 // Add rotation state
 bool boardRotated = false;
 
@@ -86,7 +81,7 @@ Vector2 ScreenToBoard(Vector2 screenPos) {
     return {(float)x, (float)y};
 }
 
-// Modify BoardToScreen function to handle smooth rotation
+// Modify BoardToScreen function to handle instant rotation
 Vector2 BoardToScreen(int x, int y) {
     float centerX = BOARD_SIZE * TILE_SIZE / 2.0f;
     float centerY = BOARD_SIZE * TILE_SIZE / 2.0f;
@@ -95,15 +90,16 @@ Vector2 BoardToScreen(int x, int y) {
     float relX = (x + 0.5f) * TILE_SIZE - centerX;
     float relY = (y + 0.5f) * TILE_SIZE - centerY;
     
-    // Apply rotation
-    float radians = currentRotation * PI / 180.0f;
-    float rotX = relX * cosf(radians) - relY * sinf(radians);
-    float rotY = relX * sinf(radians) + relY * cosf(radians);
+    // Apply instant rotation if needed
+    if (boardRotated) {
+        relX = -relX;
+        relY = -relY;
+    }
     
     // Convert back to screen coordinates
     return {
-        rotX + centerX - TILE_SIZE/2,
-        rotY + centerY - TILE_SIZE/2
+        relX + centerX - TILE_SIZE/2,
+        relY + centerY - TILE_SIZE/2
     };
 }
 
@@ -124,17 +120,23 @@ void DrawBoard() {
     for (int col = 0; col < BOARD_SIZE; col++) {
         char colLabel = boardRotated ? ('h' - col) : ('a' + col);
         char label[2] = {colLabel, '\0'};
-        Vector2 pos = BoardToScreen(col, BOARD_SIZE);
+        float x = col * TILE_SIZE;
+        if (boardRotated) {
+            x = (BOARD_SIZE - 1 - col) * TILE_SIZE;
+        }
         int textWidth = MeasureText(label, 20);
-        DrawText(label, pos.x + (TILE_SIZE - textWidth) / 2, pos.y + 25, 20, BLACK);
+        DrawText(label, x + (TILE_SIZE - textWidth) / 2, BOARD_SIZE * TILE_SIZE + 25, 20, BLACK);
     }
 
     // Draw row numbers (1-8)
     for (int row = 0; row < BOARD_SIZE; row++) {
-        char rowLabel = boardRotated ? ('1' + row) : ('8' - row);
+        char rowLabel = boardRotated ? ('8' - row) : ('1' + row);
         char label[2] = {rowLabel, '\0'};
-        Vector2 pos = BoardToScreen(-1, row);
-        DrawText(label, 5, pos.y + (TILE_SIZE - 20) / 2, 20, BLACK);
+        float y = row * TILE_SIZE;
+        if (boardRotated) {
+            y = (BOARD_SIZE - 1 - row) * TILE_SIZE;
+        }
+        DrawText(label, 5, y + (TILE_SIZE - 20) / 2, 20, BLACK);
     }
 }
 
@@ -316,10 +318,9 @@ void MovePiece(int x, int y) {
             selectedPiece->x = x;
             selectedPiece->y = y;
             
-            // Switch turns and update target rotation
+            // Switch turns and update board rotation instantly
             isWhiteTurn = !isWhiteTurn;
             boardRotated = !boardRotated;
-            targetRotation = boardRotated ? 180.0f : 0.0f;
             
             // Clear selection
             selectedPiece = nullptr;
@@ -357,15 +358,6 @@ int main() {
     SetupBoard();
     
     while (!WindowShouldClose()) {
-        // Update rotation animation
-        if (currentRotation != targetRotation) {
-            if (currentRotation < targetRotation) {
-                currentRotation = min(currentRotation + ROTATION_SPEED, targetRotation);
-            } else {
-                currentRotation = max(currentRotation - ROTATION_SPEED, targetRotation);
-            }
-        }
-
         // Handle left click for piece selection and movement
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mousePos = GetMousePosition();
