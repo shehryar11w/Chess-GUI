@@ -40,6 +40,9 @@ public:
     const Team& GetBlackTeam() const;
     const Piece* GetPieceAt(int x, int y) const;
     bool IsSquareUnderAttack(int x, int y, bool byWhite) const;
+    void ToggleBoardRotation();
+    void DrawLabels();
+    void DrawMenu();
 
 private:
     void HandleInput();
@@ -47,3 +50,4 @@ private:
 };
 
 #endif
+
