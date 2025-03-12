@@ -2,11 +2,17 @@
 #define PAWN_H
 
 #include "Piece.h"
+#include "Game.h"
 
 class Pawn : public Piece {
 public:
     Pawn(int xPos, int yPos, Texture2D tex, bool white) 
         : Piece(xPos, yPos, tex, white) {}
+
+    ~Pawn() {
+        // Let raylib handle texture unloading
+        // Do not call glBindTexture directly
+    }
 
     std::vector<Vector2> GetValidMoves(const Game& game) const override {
         std::vector<Vector2> moves;
