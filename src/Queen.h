@@ -2,6 +2,7 @@
 #define QUEEN_H
 
 #include "Piece.h"
+#include "Game.h"
 
 class Queen : public Piece {
 public:
