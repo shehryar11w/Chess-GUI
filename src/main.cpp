@@ -18,3 +18,4 @@ int main() {
     chessGame.Run();
     return 0;
 }
+
