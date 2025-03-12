@@ -3,7 +3,7 @@
 #include "Team.h"
 #include "TextureManager.h"
 #include <cmath>  // For floorf
-
+#include <iostream>
 // Add static member definitions
 const Color Game::LIGHT_SQUARE = RAYWHITE;
 const Color Game::DARK_SQUARE = DARKGRAY;
@@ -16,10 +16,6 @@ Game::Game() :
     isWhiteTurn(true),
     boardRotated(false)
 {
-    // Initialize window first
-    InitWindow(BOARD_SIZE * TILE_SIZE, BOARD_SIZE * TILE_SIZE + 60, "Chess with Raylib");
-    SetTargetFPS(60);
-
     // Initialize OpenGL context and wait for it to be ready
     while (!IsWindowReady()) { }
 
@@ -28,7 +24,7 @@ Game::Game() :
     texManager->Initialize();
 
     // Load piece textures
-    const std::string textureBasePath = "resources/pieces/";
+    const std::string textureBasePath = "assets/";
     const std::vector<std::string> pieceTypes = {"pawn", "rook", "knight", "bishop", "queen", "king"};
     const std::vector<std::string> colors = {"white", "black"};
 
@@ -36,6 +32,7 @@ Game::Game() :
         for (const auto& piece : pieceTypes) {
             std::string key = color + "_" + piece;
             std::string path = textureBasePath + key + ".png";
+            // std::cout << path << std::endl;
             texManager->LoadTextureFromFile(key, path);
         }
     }
