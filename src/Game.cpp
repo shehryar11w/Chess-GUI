@@ -22,6 +22,10 @@ enum GameState {
 
 GameState currentState = MENU;
 
+float currentRotation = 0.0f;
+float targetRotation = 0.0f;
+const float rotationSpeed = 2.0f;  // Adjust this value to control speed
+
 Game::Game() : 
     whiteTeam(true),
     blackTeam(false),
@@ -93,7 +97,18 @@ Game::~Game() {
 void Game::Run() {
     while (!WindowShouldClose()) {
         HandleInput();
-        
+
+        // Smooth rotation logic
+        if (currentRotation != targetRotation) {
+            if (currentRotation < targetRotation) {
+                currentRotation += rotationSpeed;
+                if (currentRotation > targetRotation) currentRotation = targetRotation;
+            } else {
+                currentRotation -= rotationSpeed;
+                if (currentRotation < targetRotation) currentRotation = targetRotation;
+            }
+        }
+
         BeginDrawing();
         {
             ClearBackground(RAYWHITE);
@@ -438,4 +453,5 @@ const Piece* Game::GetPieceAt(int x, int y) const {
 
 void Game::ToggleBoardRotation() {
     boardRotated = !boardRotated;
+    targetRotation = boardRotated ? 180.0f : 0.0f;
 } 
