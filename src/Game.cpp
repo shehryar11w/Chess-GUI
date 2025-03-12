@@ -304,13 +304,10 @@ void Game::DrawMenu() {
     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), DARKGRAY);
 
     const char* title = "Chess Game";
-    const char* playOption = "Press ENTER to Play";
     const char* developers = "Developed by: Shehryar, Sufyan & Faizan";
     int titleWidth = MeasureText(title, 40);
-    int playWidth = MeasureText(playOption, 20);
     int devWidth = MeasureText(developers, 20);
     DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 2 - 100, 40, RAYWHITE);
-    DrawText(playOption, (GetScreenWidth() - playWidth) / 2, GetScreenHeight() / 2 - 40, 20, LIGHTGRAY);
 
     // Draw Play button with hover effect
     int buttonWidth = 200;
