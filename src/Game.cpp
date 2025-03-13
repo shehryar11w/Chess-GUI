@@ -7,6 +7,8 @@
 #include "raylib.h"
 #include <filesystem>  // For printing current working directory
 
+using namespace std;
+
 // Add static member definitions
 const Color Game::LIGHT_SQUARE = RAYWHITE;
 const Color Game::DARK_SQUARE = DARKGRAY;
@@ -34,7 +36,7 @@ Game::Game() :
     boardRotated(false)
 {
     // Print current working directory
-    std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
+    // std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
 
     // Initialize OpenGL context and wait for it to be ready
     while (!IsWindowReady()) { }
@@ -45,17 +47,17 @@ Game::Game() :
     // Load move sound
     moveSound = LoadSound("assets/move.mp3");
     if (moveSound.stream.buffer == NULL) {
-        std::cerr << "Failed to load move sound!" << std::endl;
+        // std::cerr << "Failed to load move sound!" << std::endl;
     } else {
-        std::cout << "Move sound loaded successfully." << std::endl;
+        // std::cout << "Move sound loaded successfully." << std::endl;
     }
 
     // Load capture sound
     captureSound = LoadSound("assets/capture.mp3");
     if (captureSound.stream.buffer == NULL) {
-        std::cerr << "Failed to load capture sound!" << std::endl;
+        // std::cerr << "Failed to load capture sound!" << std::endl;
     } else {
-        std::cout << "Capture sound loaded successfully." << std::endl;
+        // std::cout << "Capture sound loaded successfully." << std::endl;
     }
 
     // Initialize texture manager and ensure it's ready
@@ -201,11 +203,11 @@ void Game::HandleInput() {
             int buttonHeight = 50;
             int buttonX = (GetScreenWidth() - buttonWidth) / 2;
             int buttonY = GetScreenHeight() / 2 + 20;  // Ensure this matches the DrawMenu position
-            std::cout << "Mouse Position: (" << mousePos.x << ", " << mousePos.y << ")" << std::endl;
-            std::cout << "Button Position: (" << buttonX << ", " << buttonY << ")" << std::endl;
+            // std::cout << "Mouse Position: (" << mousePos.x << ", " << mousePos.y << ")" << std::endl;
+            // std::cout << "Button Position: (" << buttonX << ", " << buttonY << ")" << std::endl;
             if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
                 mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
-                std::cout << "Play button clicked!" << std::endl;
+                // std::cout << "Play button clicked!" << std::endl;
                 currentState = PLAY;
             }
         }
@@ -249,7 +251,7 @@ void Game::DrawBoard() {
 
             // Draw vertical labels (1 to 8)
             if (x == 0) {
-                char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
+                char rowLabel = (isWhiteTurn && !boardRotated) ? ('1' + y) : ('8' - y);
                 char label[2] = {rowLabel, '\0'};
                 int labelX = 10;  // Always draw on the left side
                 DrawText(label, labelX, drawY * TILE_SIZE + TILE_SIZE / 2 - 10, 25, BLACK);
@@ -284,7 +286,7 @@ void Game::DrawBoard() {
 void Game::DrawLabels() {
     for (int y = 0; y < BOARD_SIZE; y++) {
         // Draw vertical labels (1 to 8) on the left side
-        char rowLabel = '1' + y;
+        char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
         char label[2] = {rowLabel, '\0'};
         int labelX = 10;  // Always draw on the left side
         DrawText(label, labelX, y * TILE_SIZE + TILE_SIZE / 2 - 10, 25, BLACK);
@@ -405,14 +407,14 @@ void Game::MovePiece(int x, int y) {
             if (captureSound.stream.buffer != NULL) {
                 PlaySound(captureSound);
             } else {
-                std::cerr << "Capture sound not loaded, cannot play sound." << std::endl;
+                // std::cerr << "Capture sound not loaded, cannot play sound." << std::endl;
             }
         } else {
             // Play move sound
             if (moveSound.stream.buffer != NULL) {
                 PlaySound(moveSound);
             } else {
-                std::cerr << "Move sound not loaded, cannot play sound." << std::endl;
+                // std::cerr << "Move sound not loaded, cannot play sound." << std::endl;
             }
         }
 
