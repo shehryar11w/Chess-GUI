@@ -219,9 +219,10 @@ void Game::HandleInput() {
             if (boardPos.x >= 0 && boardPos.x < BOARD_SIZE &&
                 boardPos.y >= 0 && boardPos.y < BOARD_SIZE) {
 
-                if (selectedPiece == nullptr) {
+                const Piece* clickedPiece = GetPieceAt(boardPos.x, boardPos.y);
+                if (clickedPiece && clickedPiece->IsWhite() == isWhiteTurn) {
                     SelectPiece(boardPos.x, boardPos.y);
-                } else {
+                } else if (selectedPiece) {
                     MovePiece(boardPos.x, boardPos.y);
                 }
             }
