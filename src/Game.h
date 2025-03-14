@@ -9,6 +9,12 @@
 #include "Team.h"
 #include "Piece.h"
 
+struct Move {
+    Vector2 start;
+    Vector2 end;
+    Piece* piece;
+};
+
 class Game {
 private:
     static const int TILE_SIZE = 80;
@@ -23,6 +29,7 @@ private:
     std::vector<Vector2> validMoves;
     bool isWhiteTurn;
     bool boardRotated;
+    Move lastMove;
 
 public:
     Game();
@@ -43,6 +50,7 @@ public:
     void ToggleBoardRotation();
     void DrawLabels();
     void DrawMenu();
+    Move GetLastMove() const { return lastMove; }
 
 private:
     void HandleInput();
@@ -50,6 +58,10 @@ private:
 };
 
 #endif
+
+
+
+
 
 
 
