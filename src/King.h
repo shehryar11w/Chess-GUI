@@ -1,3 +1,4 @@
+
 #ifndef KING_H
 #define KING_H
 
@@ -7,7 +8,7 @@
 class King : public Piece {
 public:
     King(int xPos, int yPos, Texture2D tex, bool white) 
-        : Piece(xPos, yPos, tex, white) {}
+        : Piece(xPos, yPos, tex, white, PieceType::KING) {}
 
     std::vector<Vector2> GetValidMoves(const Game& game) const override {
         std::vector<Vector2> moves;
@@ -28,3 +29,4 @@ public:
 };
 
 #endif
+
