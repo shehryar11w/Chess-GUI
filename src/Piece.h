@@ -8,15 +8,26 @@
 // Forward declarations
 class Game;
 
+// Define PieceType enum
+enum class PieceType {
+    PAWN,
+    ROOK,
+    KNIGHT,
+    BISHOP,
+    QUEEN,
+    KING
+};
+
 class Piece {
 protected:
     int x, y;                // Position on the board
     Texture2D texture;       // Visual representation
     bool isWhite;            // Color of the piece
+    PieceType type;          // Type of the piece
 
 public:
-    Piece(int xPos, int yPos, Texture2D tex, bool white) 
-        : x(xPos), y(yPos), isWhite(white) {
+    Piece(int xPos, int yPos, Texture2D tex, bool white, PieceType pieceType) 
+        : x(xPos), y(yPos), isWhite(white), type(pieceType) {
         texture = tex;  // Texture is managed by Team class
     }
     
@@ -33,6 +44,8 @@ public:
     int GetY() const { return y; }
     const Texture2D& GetTexture() const { return texture; }
     bool IsWhite() const { return isWhite; }
+    PieceType GetType() const { return type; }
+    Vector2 GetPosition() const { return Vector2{static_cast<float>(x), static_cast<float>(y)}; }
 
     // Setters
     void SetPosition(int newX, int newY) {
@@ -47,3 +60,4 @@ protected:
 };
 
 #endif
+
