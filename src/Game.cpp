@@ -5,8 +5,6 @@
 #include <cmath>  // For floorf
 #include <iostream>
 #include "raylib.h"
-#include <filesystem>  // For printing current working directory
-
 using namespace std;
 
 // Add static member definitions
@@ -28,6 +26,9 @@ float currentRotation = 0.0f;
 float targetRotation = 0.0f;
 const float rotationSpeed = 2.0f;  // Adjust this value to control speed
 
+// Use the Move struct from Move.h
+Move lastMove;
+
 Game::Game() : 
     whiteTeam(true),
     blackTeam(false),
@@ -35,8 +36,7 @@ Game::Game() :
     isWhiteTurn(true),
     boardRotated(false)
 {
-    // Print current working directory
-    // std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
+    
 
     // Initialize OpenGL context and wait for it to be ready
     while (!IsWindowReady()) { }
@@ -46,19 +46,9 @@ Game::Game() :
 
     // Load move sound
     moveSound = LoadSound("assets/move.mp3");
-    if (moveSound.stream.buffer == NULL) {
-        // std::cerr << "Failed to load move sound!" << std::endl;
-    } else {
-        // std::cout << "Move sound loaded successfully." << std::endl;
-    }
 
     // Load capture sound
     captureSound = LoadSound("assets/capture.mp3");
-    if (captureSound.stream.buffer == NULL) {
-        // std::cerr << "Failed to load capture sound!" << std::endl;
-    } else {
-        // std::cout << "Capture sound loaded successfully." << std::endl;
-    }
 
     // Initialize texture manager and ensure it's ready
     auto texManager = TextureManager::GetInstance();
@@ -145,6 +135,19 @@ void Game::Draw() {
                     TILE_SIZE,
                     RED
                 );
+            } else if (selectedPiece->GetType() == PieceType::PAWN &&
+                       abs(lastMove.end.y - lastMove.start.y) == 2 &&
+                       lastMove.piece->GetType() == PieceType::PAWN &&
+                       lastMove.end.x == move.x &&
+                       abs(lastMove.end.y - move.y) == 1) {
+                // Highlight en passant moves with a red rectangle
+                DrawRectangle(
+                    drawX * TILE_SIZE,
+                    drawY * TILE_SIZE,
+                    TILE_SIZE,
+                    TILE_SIZE,
+                    RED
+                );
             }
         }
     }
@@ -203,11 +206,8 @@ void Game::HandleInput() {
             int buttonHeight = 50;
             int buttonX = (GetScreenWidth() - buttonWidth) / 2;
             int buttonY = GetScreenHeight() / 2 + 20;  // Ensure this matches the DrawMenu position
-            // std::cout << "Mouse Position: (" << mousePos.x << ", " << mousePos.y << ")" << std::endl;
-            // std::cout << "Button Position: (" << buttonX << ", " << buttonY << ")" << std::endl;
             if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
                 mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
-                // std::cout << "Play button clicked!" << std::endl;
                 currentState = PLAY;
             }
         }
@@ -233,6 +233,7 @@ void Game::HandleInput() {
 }
 
 void Game::DrawBoard() {
+    int offsetRightX = 20;  // Add scaling from the right
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - x : x;
@@ -253,7 +254,7 @@ void Game::DrawBoard() {
             if (x == 0) {
                 char rowLabel = (isWhiteTurn && !boardRotated) ? ('1' + y) : ('8' - y);
                 char label[2] = {rowLabel, '\0'};
-                int labelX = 10;  // Always draw on the left side
+                int labelX = 10;  // Adjust position to ensure visibility
                 DrawText(label, labelX, drawY * TILE_SIZE + TILE_SIZE / 2 - 10, 25, BLACK);
             }
         }
@@ -284,11 +285,12 @@ void Game::DrawBoard() {
 }
 
 void Game::DrawLabels() {
+    int offsetRightX = 20;  // Add scaling from the right
     for (int y = 0; y < BOARD_SIZE; y++) {
         // Draw vertical labels (1 to 8) on the left side
         char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
         char label[2] = {rowLabel, '\0'};
-        int labelX = 10;  // Always draw on the left side
+        int labelX = 10;  // Adjust position to ensure visibility
         DrawText(label, labelX, y * TILE_SIZE + TILE_SIZE / 2 - 10, 25, BLACK);
     }
 
@@ -395,6 +397,30 @@ void Game::MovePiece(int x, int y) {
     }
 
     if (isValidMove) {
+        // Check for en passant
+        if (selectedPiece->GetType() == PieceType::PAWN &&
+            abs(lastMove.end.y - lastMove.start.y) == 2 &&
+            lastMove.piece->GetType() == PieceType::PAWN &&
+            lastMove.end.x == x &&
+            abs(lastMove.end.y - y) == 1) {
+
+            // En passant capture
+            Piece* capturedPawn = const_cast<Piece*>(GetPieceAt(x, lastMove.end.y));
+            if (capturedPawn) {
+                // std::cout << "Captured Pawn at: (" << x << ", " << lastMove.end.y << ")" << std::endl;
+                if (capturedPawn->IsWhite()) {
+                    whiteTeam.RemovePieceAt(x, lastMove.end.y);
+                } else {
+                    blackTeam.RemovePieceAt(x, lastMove.end.y);
+                }
+            }
+
+            // Play capture sound for en passant
+            if (captureSound.stream.buffer != NULL) {
+                PlaySound(captureSound);
+            }
+        }
+
         // Remove the captured piece if present
         Piece* targetPiece = const_cast<Piece*>(GetPieceAt(x, y));
         if (targetPiece && targetPiece->IsWhite() != selectedPiece->IsWhite()) {
@@ -406,17 +432,16 @@ void Game::MovePiece(int x, int y) {
             // Play capture sound
             if (captureSound.stream.buffer != NULL) {
                 PlaySound(captureSound);
-            } else {
-                // std::cerr << "Capture sound not loaded, cannot play sound." << std::endl;
             }
         } else {
             // Play move sound
             if (moveSound.stream.buffer != NULL) {
                 PlaySound(moveSound);
-            } else {
-                // std::cerr << "Move sound not loaded, cannot play sound." << std::endl;
             }
         }
+
+        // Update last move
+        lastMove = {selectedPiece->GetPosition(), targetPos, selectedPiece};
 
         selectedPiece->SetPosition(x, y);
         isWhiteTurn = !isWhiteTurn;  // Switch turns
