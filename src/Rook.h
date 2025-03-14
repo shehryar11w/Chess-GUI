@@ -7,7 +7,7 @@
 class Rook : public Piece {
 public:
     Rook(int xPos, int yPos, Texture2D tex, bool white) 
-        : Piece(xPos, yPos, tex, white) {}
+        : Piece(xPos, yPos, tex, white, PieceType::ROOK) {}
 
     std::vector<Vector2> GetValidMoves(const Game& game) const override {
         std::vector<Vector2> moves;
@@ -32,3 +32,4 @@ public:
 };
 
 #endif
+
