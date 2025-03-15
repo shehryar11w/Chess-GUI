@@ -126,7 +126,7 @@ void Game::Draw() {
         for (const auto& move : validMoves) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
             int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
-            if (GetPieceAt(move.x, move.y)) {
+            if (GetPieceAt(move.x, move.y) && GetPieceAt(move.x, move.y)->GetType() != PieceType::KING) {
                 // Highlight capture moves with a rectangle
                 DrawRectangle(
                     drawX * TILE_SIZE,
@@ -424,6 +424,10 @@ void Game::MovePiece(int x, int y) {
         // Remove the captured piece if present
         Piece* targetPiece = const_cast<Piece*>(GetPieceAt(x, y));
         if (targetPiece && targetPiece->IsWhite() != selectedPiece->IsWhite()) {
+            if (targetPiece->GetType() == PieceType::KING) {
+                // Cannot capture the king, invalidate the move
+                return;
+            }
             if (targetPiece->IsWhite()) {
                 whiteTeam.RemovePieceAt(x, y);
             } else {
