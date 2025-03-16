@@ -154,6 +154,46 @@ void Game::Draw() {
         }
     }
 
+    // Find kings and check if they're in check
+    const Piece* whiteKing = nullptr;
+    const Piece* blackKing = nullptr;
+    for (const auto& piece : whiteTeam.GetPieces()) {
+        if (piece->GetType() == PieceType::KING) {
+            whiteKing = piece.get();
+            break;
+        }
+    }
+    for (const auto& piece : blackTeam.GetPieces()) {
+        if (piece->GetType() == PieceType::KING) {
+            blackKing = piece.get();
+            break;
+        }
+    }
+
+    // Draw check highlight
+    if (whiteKing && IsSquareUnderAttack(whiteKing->GetX(), whiteKing->GetY(), false)) {
+        int drawX = boardRotated ? BOARD_SIZE - 1 - whiteKing->GetX() : whiteKing->GetX();
+        int drawY = boardRotated ? BOARD_SIZE - 1 - whiteKing->GetY() : whiteKing->GetY();
+        DrawRectangle(
+            drawX * TILE_SIZE,
+            drawY * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE,
+            Color{255, 0, 0, 100} // Semi-transparent red
+        );
+    }
+    if (blackKing && IsSquareUnderAttack(blackKing->GetX(), blackKing->GetY(), true)) {
+        int drawX = boardRotated ? BOARD_SIZE - 1 - blackKing->GetX() : blackKing->GetX();
+        int drawY = boardRotated ? BOARD_SIZE - 1 - blackKing->GetY() : blackKing->GetY();
+        DrawRectangle(
+            drawX * TILE_SIZE,
+            drawY * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE,
+            Color{255, 0, 0, 100} // Semi-transparent red
+        );
+    }
+
     // Draw pieces
     for (const auto& piece : whiteTeam.GetPieces()) {
         Vector2 pos = GetCenteredPiecePosition(*piece);
@@ -418,7 +458,6 @@ void Game::MovePiece(int x, int y) {
             // En passant capture
             Piece* capturedPawn = const_cast<Piece*>(GetPieceAt(x, lastMove.end.y));
             if (capturedPawn) {
-                // std::cout << "Captured Pawn at: (" << x << ", " << lastMove.end.y << ")" << std::endl;
                 if (capturedPawn->IsWhite()) {
                     whiteTeam.RemovePieceAt(x, lastMove.end.y);
                 } else {
@@ -468,9 +507,88 @@ void Game::MovePiece(int x, int y) {
     validMoves.clear();
 }
 
+bool Game::IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePos) const {
+    const Team& attackingTeam = byWhite ? whiteTeam : blackTeam;
+    
+    // Check all pieces of the attacking team
+    for (const auto& piece : attackingTeam.GetPieces()) {
+        // Skip if this is the piece position we're ignoring (for capture validation)
+        if (piece->GetX() == ignorePiecePos.x && piece->GetY() == ignorePiecePos.y) {
+            continue;
+        }
+        
+        // Skip if the piece is at the target square (for king move validation)
+        if (piece->GetX() == x && piece->GetY() == y) {
+            continue;
+        }
+        
+        // Get all possible moves for this piece
+        auto moves = piece->GetValidMoves(*this);
+        
+        // Check if any move can reach the target square
+        for (const auto& move : moves) {
+            if (move.x == x && move.y == y) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 std::vector<Vector2> Game::GetValidMoves(Piece* piece) {
     if (!piece) return {};
-    return piece->GetValidMoves(*this);
+    
+    std::vector<Vector2> moves = piece->GetValidMoves(*this);
+    std::vector<Vector2> legalMoves;
+    
+    // Find our king
+    const Team& ourTeam = piece->IsWhite() ? whiteTeam : blackTeam;
+    const Piece* ourKing = nullptr;
+    for (const auto& p : ourTeam.GetPieces()) {
+        if (p->GetType() == PieceType::KING) {
+            ourKing = p.get();
+            break;
+        }
+    }
+    
+    if (!ourKing) return moves; // Should never happen in a valid game
+    
+    // Store original position
+    Vector2 originalPos = piece->GetPosition();
+    
+    // Test each move to see if it leaves our king in check
+    for (const auto& move : moves) {
+        // Store piece at target position (if any)
+        const Piece* capturedPiece = GetPieceAt(move.x, move.y);
+        Vector2 capturedPos = {-1, -1};
+        
+        if (capturedPiece) {
+            capturedPos = {(float)capturedPiece->GetX(), (float)capturedPiece->GetY()};
+        }
+        
+        // Make the move temporarily
+        piece->SetPosition(move.x, move.y);
+        
+        // Check if our king is in check after the move
+        bool kingInCheck;
+        if (piece->GetType() == PieceType::KING) {
+            // If moving the king, check the new position
+            kingInCheck = IsSquareUnderAttack(move.x, move.y, !piece->IsWhite(), capturedPos);
+        } else {
+            // For other pieces, check the king's current position
+            kingInCheck = IsSquareUnderAttack(ourKing->GetX(), ourKing->GetY(), !piece->IsWhite(), capturedPos);
+        }
+        
+        // If the move doesn't leave/put our king in check, it's legal
+        if (!kingInCheck) {
+            legalMoves.push_back(move);
+        }
+    }
+    
+    // Restore the original position
+    piece->SetPosition(originalPos.x, originalPos.y);
+    
+    return legalMoves;
 }
 
 const Piece* Game::GetPieceAt(int x, int y) const {
