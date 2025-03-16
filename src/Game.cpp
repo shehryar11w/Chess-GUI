@@ -125,7 +125,7 @@ void Game::Run() {
 
 void Game::Draw() {
     // Draw capture highlights first
-    if (selectedPiece) {
+    if (selectedPiece && GetGameState() != PROMOTION) {
         for (const auto& move : validMoves) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
             int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
@@ -221,7 +221,7 @@ void Game::Draw() {
     }
 
     // Draw available move highlights
-    if (selectedPiece) {
+    if (selectedPiece && GetGameState() != PROMOTION) {
         for (const auto& move : validMoves) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
             int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
@@ -267,17 +267,17 @@ void Game::HandleInput() {
     if (GetGameState() == PROMOTION) {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mousePos = GetMousePosition();
-            int tileSize = TILE_SIZE;
-            int centerX = GetScreenWidth() / 2 - (2 * tileSize);
-            int centerY = GetScreenHeight() / 2 - (tileSize / 2);
+            float spacing = 100.0f;
+            float startX = GetScreenWidth() / 2 - (spacing * 4 / 2);
+            float y = GetScreenHeight() / 2 - 50;
 
             // Check which piece was clicked
             for (int i = 0; i < 4; i++) {
                 Rectangle pieceRect = {
-                    (float)(centerX + i * tileSize),
-                    (float)centerY,
-                    (float)tileSize,
-                    (float)tileSize
+                    startX + i * spacing,
+                    y,
+                    64,  // Assuming piece texture size
+                    64   // Assuming piece texture size
                 };
 
                 if (CheckCollisionPointRec(mousePos, pieceRect)) {
