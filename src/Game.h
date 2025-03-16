@@ -9,6 +9,12 @@
 #include "Team.h"
 #include "Piece.h"
 
+enum GameState {
+    MENU,
+    PLAY,
+    PROMOTION
+};
+
 struct Move {
     Vector2 start;
     Vector2 end;
@@ -30,6 +36,8 @@ private:
     bool isWhiteTurn;
     bool boardRotated;
     Move lastMove;
+    Vector2 promotionSquare;
+    GameState currentState;
 
 public:
     Game();
@@ -51,6 +59,10 @@ public:
     void DrawLabels();
     void DrawMenu();
     Move GetLastMove() const { return lastMove; }
+    void DrawPromotionUI();
+    void PromotePawn(PieceType type);
+    GameState GetGameState() const { return currentState; }
+    void SetGameState(GameState state) { currentState = state; }
 
 private:
     void HandleInput();
