@@ -142,13 +142,13 @@ void Game::Draw() {
                        lastMove.end.y == selectedPiece->GetY() &&  // Check if enemy pawn is on same rank
                        abs(move.x - selectedPiece->GetX()) == 1 && // Check if moving diagonally
                        move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) { // Check if moving to correct square
-                // Highlight en passant moves with a red rectangle
+                // Highlight en passant moves with a blue rectangle
                 DrawRectangle(
                     drawX * TILE_SIZE,
                     drawY * TILE_SIZE,
                     TILE_SIZE,
                     TILE_SIZE,
-                    RED
+                    BLUE
                 );
             }
         }
@@ -182,7 +182,14 @@ void Game::Draw() {
         for (const auto& move : validMoves) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
             int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
-            if (!GetPieceAt(move.x, move.y)) {
+            if (!GetPieceAt(move.x, move.y) && 
+                !(selectedPiece->GetType() == PieceType::PAWN &&
+                  abs(lastMove.end.y - lastMove.start.y) == 2 &&
+                  lastMove.piece->GetType() == PieceType::PAWN &&
+                  lastMove.end.x == move.x &&
+                  lastMove.end.y == selectedPiece->GetY() &&
+                  abs(move.x - selectedPiece->GetX()) == 1 &&
+                  move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1))) {
                 // Highlight available moves with a circle
                 DrawCircle(
                     (drawX * TILE_SIZE) + TILE_SIZE/2,
