@@ -46,7 +46,7 @@ public:
     const Team& GetWhiteTeam() const;
     const Team& GetBlackTeam() const;
     const Piece* GetPieceAt(int x, int y) const;
-    bool IsSquareUnderAttack(int x, int y, bool byWhite) const;
+    bool IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePos = {-1, -1}) const;
     void ToggleBoardRotation();
     void DrawLabels();
     void DrawMenu();
@@ -58,6 +58,7 @@ private:
 };
 
 #endif
+
 
 
 
