@@ -47,8 +47,13 @@ public:
                     const Piece* adjacentPawn = game.GetPieceAt(newX, y);
                     if (adjacentPawn && adjacentPawn->GetType() == PieceType::PAWN && adjacentPawn->IsWhite() != isWhite) {
                         // Check if the last move was a two-square pawn advance
-                        if (game.GetLastMove().piece == adjacentPawn && abs(game.GetLastMove().end.y - game.GetLastMove().start.y) == 2) {
-                            moves.push_back({(float)newX, (float)newY});
+                        const Move& lastMove = game.GetLastMove();
+                        if (lastMove.piece == adjacentPawn && 
+                            abs(lastMove.end.y - lastMove.start.y) == 2 && 
+                            lastMove.end.x == newX && 
+                            lastMove.end.y == y) {
+                            // Add the square behind the pawn as a valid move
+                            moves.push_back({(float)newX, (float)(y + direction)});
                         }
                     }
                 }
@@ -60,4 +65,5 @@ public:
 };
 
 #endif
+
 
