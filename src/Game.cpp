@@ -139,7 +139,9 @@ void Game::Draw() {
                        abs(lastMove.end.y - lastMove.start.y) == 2 &&
                        lastMove.piece->GetType() == PieceType::PAWN &&
                        lastMove.end.x == move.x &&
-                       abs(lastMove.end.y - move.y) == 1) {
+                       lastMove.end.y == selectedPiece->GetY() &&  // Check if enemy pawn is on same rank
+                       abs(move.x - selectedPiece->GetX()) == 1 && // Check if moving diagonally
+                       move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) { // Check if moving to correct square
                 // Highlight en passant moves with a red rectangle
                 DrawRectangle(
                     drawX * TILE_SIZE,
@@ -402,7 +404,9 @@ void Game::MovePiece(int x, int y) {
             abs(lastMove.end.y - lastMove.start.y) == 2 &&
             lastMove.piece->GetType() == PieceType::PAWN &&
             lastMove.end.x == x &&
-            abs(lastMove.end.y - y) == 1) {
+            lastMove.end.y == selectedPiece->GetY() &&  // Check if enemy pawn is on same rank
+            abs(x - selectedPiece->GetX()) == 1 &&      // Check if moving diagonally
+            y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) {  // Check if moving to correct square behind enemy pawn
 
             // En passant capture
             Piece* capturedPawn = const_cast<Piece*>(GetPieceAt(x, lastMove.end.y));
