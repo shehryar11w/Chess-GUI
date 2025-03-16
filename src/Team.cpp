@@ -65,7 +65,7 @@ void Team::SetupPieces()
 
         Texture2D texture = texManager->LoadTextureFromFile(key, filepath);
 
-        // ✅ Check if texture is valid before using it
+        // Check if texture is valid before using it
         if (texture.id == 0) 
         {
             std::cerr << "ERROR: Texture failed to load: " << filepath << std::endl;
@@ -159,6 +159,51 @@ void Team::AddPiece(int x, int y, char type)
         break;
     case 'K':
         pieces.push_back(std::make_unique<King>(x, y, tex, isWhite));
+        break;
+    }
+}
+
+void Team::AddPiece(PieceType type, int x, int y)
+{
+    auto* texManager = TextureManager::GetInstance();
+    std::string color = isWhite ? "white" : "black";
+    std::string texKey;
+
+    switch (type)
+    {
+    case PieceType::QUEEN:
+        texKey = color + "_queen";
+        break;
+    case PieceType::ROOK:
+        texKey = color + "_rook";
+        break;
+    case PieceType::BISHOP:
+        texKey = color + "_bishop";
+        break;
+    case PieceType::KNIGHT:
+        texKey = color + "_knight";
+        break;
+    default:
+        return;
+    }
+
+    Texture2D tex = texManager->GetTexture(texKey);
+    if (tex.id == 0)
+        return; // Skip if texture not found
+
+    switch (type)
+    {
+    case PieceType::QUEEN:
+        pieces.push_back(std::make_unique<Queen>(x, y, tex, isWhite));
+        break;
+    case PieceType::ROOK:
+        pieces.push_back(std::make_unique<Rook>(x, y, tex, isWhite));
+        break;
+    case PieceType::BISHOP:
+        pieces.push_back(std::make_unique<Bishop>(x, y, tex, isWhite));
+        break;
+    case PieceType::KNIGHT:
+        pieces.push_back(std::make_unique<Knight>(x, y, tex, isWhite));
         break;
     }
 }
