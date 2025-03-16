@@ -15,13 +15,6 @@ const Color Game::MOVE_HIGHLIGHT = GREEN;
 Sound moveSound;
 Sound captureSound;
 
-enum GameState {
-    MENU,
-    PLAY
-};
-
-GameState currentState = MENU;
-
 float currentRotation = 0.0f;
 float targetRotation = 0.0f;
 const float rotationSpeed = 2.0f;  // Adjust this value to control speed
@@ -29,14 +22,19 @@ const float rotationSpeed = 2.0f;  // Adjust this value to control speed
 // Use the Move struct from Move.h
 Move lastMove;
 
+Vector2 promotionSquare = {-1, -1};
+
 Game::Game() : 
     whiteTeam(true),
     blackTeam(false),
     selectedPiece(nullptr),
     isWhiteTurn(true),
-    boardRotated(false)
+    boardRotated(false),
+    currentState(MENU),  // Start in MENU state
+    promotionSquare({-1, -1})
 {
-    
+    // Set window to be maximized by default
+    SetConfigFlags(FLAG_WINDOW_MAXIMIZED);
 
     // Initialize OpenGL context and wait for it to be ready
     while (!IsWindowReady()) { }
@@ -63,7 +61,6 @@ Game::Game() :
         for (const auto& piece : pieceTypes) {
             std::string key = color + "_" + piece;
             std::string path = textureBasePath + key + ".png";
-            // std::cout << path << std::endl;
             texManager->LoadTextureFromFile(key, path);
         }
     }
@@ -105,14 +102,20 @@ void Game::Run() {
         {
             ClearBackground(RAYWHITE);
             
-            switch (currentState) {
+            switch (GetGameState()) {
                 case MENU:
                     DrawMenu();
                     break;
                 case PLAY:
                     DrawBoard();
-                    DrawLabels();  // Draw labels separately
+                    DrawLabels();
                     Draw();
+                    break;
+                case PROMOTION:
+                    DrawBoard();
+                    DrawLabels();
+                    Draw();
+                    DrawPromotionUI();
                     break;
             }
         }
@@ -243,38 +246,69 @@ void Game::Draw() {
 }
 
 void Game::HandleInput() {
-    if (currentState == MENU) {
-        if (IsKeyPressed(KEY_ENTER)) {
-            currentState = PLAY;
-        }
-
+    if (GetGameState() == MENU) {
         // Check for Play button click
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mousePos = GetMousePosition();
-            int buttonWidth = 200;
-            int buttonHeight = 50;
+            int playWidth = MeasureText("Play", 30);
+            int buttonWidth = playWidth + 60;
+            int buttonHeight = 40;
             int buttonX = (GetScreenWidth() - buttonWidth) / 2;
-            int buttonY = GetScreenHeight() / 2 + 20;  // Ensure this matches the DrawMenu position
+            int buttonY = GetScreenHeight() / 2;
+
             if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
                 mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
-                currentState = PLAY;
+                SetGameState(PLAY);
             }
         }
+        return;
     }
 
-    if (currentState == PLAY) {
+    if (GetGameState() == PROMOTION) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            Vector2 mousePos = GetMousePosition();
+            int tileSize = TILE_SIZE;
+            int centerX = GetScreenWidth() / 2 - (2 * tileSize);
+            int centerY = GetScreenHeight() / 2 - (tileSize / 2);
+
+            // Check which piece was clicked
+            for (int i = 0; i < 4; i++) {
+                Rectangle pieceRect = {
+                    (float)(centerX + i * tileSize),
+                    (float)centerY,
+                    (float)tileSize,
+                    (float)tileSize
+                };
+
+                if (CheckCollisionPointRec(mousePos, pieceRect)) {
+                    PieceType promotionType;
+                    switch (i) {
+                        case 0: promotionType = PieceType::QUEEN; break;
+                        case 1: promotionType = PieceType::ROOK; break;
+                        case 2: promotionType = PieceType::BISHOP; break;
+                        case 3: promotionType = PieceType::KNIGHT; break;
+                        default: return;
+                    }
+                    PromotePawn(promotionType);
+                    SetGameState(PLAY);
+                    return;
+                }
+            }
+        }
+        return;
+    }
+
+    if (GetGameState() == PLAY) {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mousePos = GetMousePosition();
             Vector2 boardPos = ScreenToBoard(mousePos);
-
+            
             if (boardPos.x >= 0 && boardPos.x < BOARD_SIZE &&
                 boardPos.y >= 0 && boardPos.y < BOARD_SIZE) {
-
-                const Piece* clickedPiece = GetPieceAt(boardPos.x, boardPos.y);
-                if (clickedPiece && clickedPiece->IsWhite() == isWhiteTurn) {
-                    SelectPiece(boardPos.x, boardPos.y);
-                } else if (selectedPiece) {
+                if (selectedPiece) {
                     MovePiece(boardPos.x, boardPos.y);
+                } else {
+                    SelectPiece(boardPos.x, boardPos.y);
                 }
             }
         }
@@ -359,26 +393,88 @@ void Game::DrawMenu() {
 
     const char* title = "Chess Game";
     const char* developers = "Developed by: Shehryar, Sufyan & Faizan";
+    const char* playText = "Play";
+
     int titleWidth = MeasureText(title, 40);
     int devWidth = MeasureText(developers, 20);
-    DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 2 - 100, 40, RAYWHITE);
+    int playWidth = MeasureText(playText, 30);
 
-    // Draw Play button with hover effect
-    int buttonWidth = 200;
-    int buttonHeight = 50;
+    // Draw title
+    DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 3, 40, RAYWHITE);
+
+    // Draw Play button
+    int buttonWidth = playWidth + 60;  // Add padding
+    int buttonHeight = 40;
     int buttonX = (GetScreenWidth() - buttonWidth) / 2;
-    int buttonY = GetScreenHeight() / 2 + 20;
-    Color buttonColor = LIGHTGRAY;
+    int buttonY = GetScreenHeight() / 2;
+    
+    // Draw button background with hover effect
     Vector2 mousePos = GetMousePosition();
+    Color buttonColor = RAYWHITE;
     if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
         mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
-        buttonColor = GRAY;  // Change color on hover
+        buttonColor = LIGHTGRAY;  // Change color on hover
     }
     DrawRectangle(buttonX, buttonY, buttonWidth, buttonHeight, buttonColor);
-    DrawRectangleLines(buttonX, buttonY, buttonWidth, buttonHeight, BLACK);  // Add border
-    DrawText("Play", buttonX + (buttonWidth - MeasureText("Play", 20)) / 2, buttonY + 15, 20, BLACK);
+    
+    // Draw button text
+    DrawText(playText, 
+        buttonX + (buttonWidth - playWidth) / 2,
+        buttonY + (buttonHeight - 30) / 2,  // 30 is font size
+        30, 
+        BLACK
+    );
 
-    DrawText(developers, (GetScreenWidth() - devWidth) / 2, GetScreenHeight() / 2 + 100, 20, LIGHTGRAY);
+    // Draw developers credit
+    DrawText(developers, 
+        (GetScreenWidth() - devWidth) / 2,
+        GetScreenHeight() - 50,
+        20,
+        LIGHTGRAY
+    );
+}
+
+void Game::DrawPromotionUI() {
+    // Draw semi-transparent background
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Color{0, 0, 0, 200});
+
+    // Get texture manager instance
+    auto texManager = TextureManager::GetInstance();
+    bool isWhite = isWhiteTurn;  // The pawn being promoted belongs to the player who just moved
+
+    // Draw promotion pieces
+    const std::vector<std::string> pieceTypes = {"queen", "rook", "bishop", "knight"};
+    float spacing = 100.0f;
+    float startX = GetScreenWidth() / 2 - (spacing * pieceTypes.size() / 2);
+    float y = GetScreenHeight() / 2 - 50;
+
+    for (size_t i = 0; i < pieceTypes.size(); i++) {
+        Vector2 piecePos = {startX + i * spacing, y};
+        Texture2D texture = texManager->GetTexture(
+            isWhite ? "white_" + pieceTypes[i] : "black_" + pieceTypes[i]
+        );
+        
+        DrawTexture(texture, piecePos.x, piecePos.y, WHITE);
+    }
+}
+
+void Game::PromotePawn(PieceType type) {
+    // Create new piece at promotion square
+    Team& team = isWhiteTurn ? whiteTeam : blackTeam;
+    team.RemovePieceAt(promotionSquare.x, promotionSquare.y);
+    team.AddPiece(type, promotionSquare.x, promotionSquare.y);
+
+    // Play move sound
+    if (moveSound.stream.buffer != NULL) {
+        PlaySound(moveSound);
+    }
+
+    // Switch turns and rotate board
+    isWhiteTurn = !isWhiteTurn;
+    ToggleBoardRotation();
+    
+    // Reset promotion square
+    promotionSquare = {-1, -1};
 }
 
 Vector2 Game::ScreenToBoard(Vector2 screenPos) {
@@ -498,6 +594,17 @@ void Game::MovePiece(int x, int y) {
         lastMove = {selectedPiece->GetPosition(), targetPos, selectedPiece};
 
         selectedPiece->SetPosition(x, y);
+
+        // Check for pawn promotion
+        if (selectedPiece->GetType() == PieceType::PAWN) {
+            int promotionRank = selectedPiece->IsWhite() ? 0 : 7;
+            if (y == promotionRank) {
+                promotionSquare = {(float)x, (float)y};
+                SetGameState(PROMOTION);
+                return;
+            }
+        }
+
         isWhiteTurn = !isWhiteTurn;  // Switch turns
         ToggleBoardRotation();  // Rotate the board after a successful move
     }
