@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include "raylib.h"
+#include "Piece.h"
 
 class Team {
 private:
@@ -19,10 +20,12 @@ public:
     const std::vector<std::unique_ptr<Piece>>& GetPieces() const { return pieces; }
     Piece* FindPieceAt(int x, int y);
     void RemovePieceAt(int x, int y);
+    void AddPiece(PieceType type, int x, int y);  // New method for pawn promotion
 
 private:
     void SetupPieces();
-    void AddPiece(int x, int y, char type);
+    void AddPiece(int x, int y, char type);  // Original method for initial setup
 };
 
 #endif
+
