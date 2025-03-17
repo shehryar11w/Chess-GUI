@@ -335,10 +335,12 @@ void Game::DrawBoard() {
 
             // Draw vertical labels (1 to 8)
             if (x == 0) {
+                // Draw vertical labels (1 to 8) on the left side
                 char rowLabel = (isWhiteTurn && !boardRotated) ? ('1' + y) : ('8' - y);
                 char label[2] = {rowLabel, '\0'};
                 int labelX = 10;  // Adjust position to ensure visibility
-                DrawText(label, labelX, drawY * TILE_SIZE + TILE_SIZE / 2 - 10, 25, BLACK);
+                int textHeight = 20;  // Font size
+                DrawText(label, labelX, drawY * TILE_SIZE + (TILE_SIZE - textHeight) / 2, textHeight, BLACK);  // Center vertically within tile
             }
         }
     }
@@ -374,7 +376,8 @@ void Game::DrawLabels() {
         char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
         char label[2] = {rowLabel, '\0'};
         int labelX = 10;  // Adjust position to ensure visibility
-        DrawText(label, labelX, y * TILE_SIZE + TILE_SIZE / 2 - 10, 25, BLACK);
+        int textHeight = 20;  // Font size
+        DrawText(label, labelX, y * TILE_SIZE + (TILE_SIZE - textHeight) / 2, textHeight, BLACK);  // Center vertically within tile
     }
 
     for (int x = 0; x < BOARD_SIZE; x++) {
@@ -454,7 +457,7 @@ void Game::DrawPromotionUI() {
             isWhite ? "white_" + pieceTypes[i] : "black_" + pieceTypes[i]
         );
         
-        DrawTexture(texture, piecePos.x, piecePos.y, WHITE);
+        DrawTexture(texture, piecePos.x, piecePos.y, Color{255, 255, 255, 255});  // Use full opacity, no tint
     }
 }
 
