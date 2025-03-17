@@ -624,11 +624,6 @@ bool Game::IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePo
             continue;
         }
         
-        // Skip if the piece is at the target square (for king move validation)
-        if (piece->GetX() == x && piece->GetY() == y) {
-            continue;
-        }
-        
         // Get all possible moves for this piece
         auto moves = piece->GetValidMoves(*this);
         
