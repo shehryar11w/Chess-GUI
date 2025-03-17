@@ -2,7 +2,7 @@
 #include "Piece.h"
 #include "Team.h"
 #include "TextureManager.h"
-#include <cmath>  // For floorf
+#include <cmath>  
 #include <iostream>
 #include "raylib.h"
 using namespace std;
@@ -14,6 +14,8 @@ const Color Game::MOVE_HIGHLIGHT = GREEN;
 
 Sound moveSound;
 Sound captureSound;
+Sound checkSound;
+Sound promotionSound;
 
 float currentRotation = 0.0f;
 float targetRotation = 0.0f;
@@ -48,6 +50,12 @@ Game::Game() :
     // Load capture sound
     captureSound = LoadSound("assets/capture.mp3");
 
+    // Load check sound
+    checkSound = LoadSound("assets/check.mp3");
+
+    // Load promotion sound
+    promotionSound = LoadSound("assets/promote.mp3");
+
     // Initialize texture manager and ensure it's ready
     auto texManager = TextureManager::GetInstance();
     texManager->Initialize();
@@ -72,6 +80,12 @@ Game::~Game() {
 
     // Unload capture sound
     UnloadSound(captureSound);
+
+    // Unload check sound
+    UnloadSound(checkSound);
+
+    // Unload promotion sound
+    UnloadSound(promotionSound);
 
     // Close audio device
     CloseAudioDevice();
@@ -604,7 +618,28 @@ void Game::MovePiece(int x, int y) {
             if (y == promotionRank) {
                 promotionSquare = {(float)x, (float)y};
                 SetGameState(PROMOTION);
+                // Play promotion sound
+                if (promotionSound.stream.buffer != NULL) {
+                    PlaySound(promotionSound);
+                }
                 return;
+            }
+        }
+
+        // Check if this move puts the opponent's king in check
+        const Team& opposingTeam = isWhiteTurn ? blackTeam : whiteTeam;
+        const Piece* opposingKing = nullptr;
+        for (const auto& piece : opposingTeam.GetPieces()) {
+            if (piece->GetType() == PieceType::KING) {
+                opposingKing = piece.get();
+                break;
+            }
+        }
+        
+        if (opposingKing && IsSquareUnderAttack(opposingKing->GetX(), opposingKing->GetY(), isWhiteTurn)) {
+            // Play check sound
+            if (checkSound.stream.buffer != NULL) {
+                PlaySound(checkSound);
             }
         }
 
