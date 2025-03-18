@@ -16,6 +16,7 @@ Sound moveSound;
 Sound captureSound;
 Sound checkSound;
 Sound promotionSound;
+Texture2D backgroundTexture;
 
 float currentRotation = 0.0f;
 float targetRotation = 0.0f;
@@ -56,6 +57,9 @@ Game::Game() :
     // Load promotion sound
     promotionSound = LoadSound("assets/promote.mp3");
 
+    // Load background texture
+    backgroundTexture = LoadTexture("assets/background.jpg");
+
     // Initialize texture manager and ensure it's ready
     auto texManager = TextureManager::GetInstance();
     texManager->Initialize();
@@ -86,6 +90,9 @@ Game::~Game() {
 
     // Unload promotion sound
     UnloadSound(promotionSound);
+
+    // Unload background texture
+    UnloadTexture(backgroundTexture);
 
     // Close audio device
     CloseAudioDevice();
@@ -319,9 +326,35 @@ void Game::HandleInput() {
             
             if (boardPos.x >= 0 && boardPos.x < BOARD_SIZE &&
                 boardPos.y >= 0 && boardPos.y < BOARD_SIZE) {
+                
+                // Get the clicked piece
+                Piece* clickedPiece = const_cast<Piece*>(GetPieceAt(boardPos.x, boardPos.y));
+                
                 if (selectedPiece) {
-                    MovePiece(boardPos.x, boardPos.y);
+                    if (clickedPiece && clickedPiece->IsWhite() == isWhiteTurn) {
+                        // If clicking a different piece of same color, select it
+                        selectedPiece = clickedPiece;
+                        validMoves = GetValidMoves(selectedPiece);
+                    } else {
+                        // Check if it's a valid move for the currently selected piece
+                        bool isValidMove = false;
+                        for (const auto& move : validMoves) {
+                            if (move.x == boardPos.x && move.y == boardPos.y) {
+                                isValidMove = true;
+                                break;
+                            }
+                        }
+                        
+                        if (isValidMove) {
+                            MovePiece(boardPos.x, boardPos.y);
+                        } else {
+                            // Deselect if clicking an invalid move
+                            selectedPiece = nullptr;
+                            validMoves.clear();
+                        }
+                    }
                 } else {
+                    // Select new piece if no piece is currently selected
                     SelectPiece(boardPos.x, boardPos.y);
                 }
             }
@@ -330,6 +363,21 @@ void Game::HandleInput() {
 }
 
 void Game::DrawBoard() {
+    // Get window dimensions for centering
+    int windowWidth = GetScreenWidth();
+    int windowHeight = GetScreenHeight();
+    
+    // Calculate board dimensions
+    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+    int offsetX = (windowWidth - boardPixelSize) / 2;
+    int offsetY = (windowHeight - boardPixelSize) / 2;
+
+    // Draw background to cover entire screen
+    Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
+    Rectangle destRect = { 0, 0, (float)windowWidth, (float)windowHeight };
+    DrawTexturePro(backgroundTexture, sourceRect, destRect, {0, 0}, 0.0f, WHITE);
+
+    // Draw the chess board squares
     int offsetRightX = 20;  // Add scaling from the right
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
