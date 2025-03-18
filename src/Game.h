@@ -38,6 +38,11 @@ private:
     Move lastMove;
     Vector2 promotionSquare;
     GameState currentState;
+    Sound moveSound;
+    Sound captureSound;
+    Sound checkSound;
+    Sound promotionSound;
+    Texture2D backgroundTexture;  // Add background texture
 
 public:
     Game();
@@ -70,6 +75,7 @@ private:
 };
 
 #endif
+
 
 
 
