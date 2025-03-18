@@ -145,35 +145,53 @@ void Game::Run() {
 }
 
 void Game::Draw() {
-    // Draw capture highlights first
-    if (selectedPiece && GetGameState() != PROMOTION) {
-        for (const auto& move : validMoves) {
-            int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
-            int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
-            if (GetPieceAt(move.x, move.y) && GetPieceAt(move.x, move.y)->GetType() != PieceType::KING) {
-                // Highlight capture moves with a rectangle
-                DrawRectangle(
-                    drawX * TILE_SIZE,
-                    drawY * TILE_SIZE,
-                    TILE_SIZE,
-                    TILE_SIZE,
-                    RED
-                );
-            } else if (selectedPiece->GetType() == PieceType::PAWN &&
-                       abs(lastMove.end.y - lastMove.start.y) == 2 &&
-                       lastMove.piece->GetType() == PieceType::PAWN &&
-                       lastMove.end.x == move.x &&
-                       lastMove.end.y == selectedPiece->GetY() &&  // Check if enemy pawn is on same rank
-                       abs(move.x - selectedPiece->GetX()) == 1 && // Check if moving diagonally
-                       move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) { // Check if moving to correct square
-                // Highlight en passant moves with a blue rectangle
-                DrawRectangle(
-                    drawX * TILE_SIZE,
-                    drawY * TILE_SIZE,
-                    TILE_SIZE,
-                    TILE_SIZE,
-                    BLUE
-                );
+    // Get window dimensions for centering
+    int windowWidth = GetScreenWidth();
+    int windowHeight = GetScreenHeight();
+    
+    // Calculate board offset
+    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+    int offsetX = (windowWidth - boardPixelSize) / 2;
+    int offsetY = (windowHeight - boardPixelSize) / 2;
+
+    // Draw the board first
+    DrawBoard();
+    
+    // Draw labels
+    DrawLabels();
+
+    // Only draw move highlights if we're in PLAY state
+    if (GetGameState() == PLAY) {
+        // Draw capture highlights first
+        if (selectedPiece) {
+            for (const auto& move : validMoves) {
+                int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
+                int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
+                if (GetPieceAt(move.x, move.y) && GetPieceAt(move.x, move.y)->GetType() != PieceType::KING) {
+                    // Highlight capture moves with a rectangle
+                    DrawRectangle(
+                        offsetX + drawX * TILE_SIZE,
+                        offsetY + drawY * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE,
+                        RED
+                    );
+                } else if (selectedPiece->GetType() == PieceType::PAWN &&
+                           abs(lastMove.end.y - lastMove.start.y) == 2 &&
+                           lastMove.piece->GetType() == PieceType::PAWN &&
+                           lastMove.end.x == move.x &&
+                           lastMove.end.y == selectedPiece->GetY() &&  // Check if enemy pawn is on same rank
+                           abs(move.x - selectedPiece->GetX()) == 1 && // Check if moving diagonally
+                           move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) { // Check if moving to correct square
+                    // Highlight en passant moves with a blue rectangle
+                    DrawRectangle(
+                        offsetX + drawX * TILE_SIZE,
+                        offsetY + drawY * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE,
+                        BLUE
+                    );
+                }
             }
         }
     }
@@ -199,8 +217,8 @@ void Game::Draw() {
         int drawX = boardRotated ? BOARD_SIZE - 1 - whiteKing->GetX() : whiteKing->GetX();
         int drawY = boardRotated ? BOARD_SIZE - 1 - whiteKing->GetY() : whiteKing->GetY();
         DrawRectangle(
-            drawX * TILE_SIZE,
-            drawY * TILE_SIZE,
+            offsetX + drawX * TILE_SIZE,
+            offsetY + drawY * TILE_SIZE,
             TILE_SIZE,
             TILE_SIZE,
             Color{255, 0, 0, 100} // Semi-transparent red
@@ -210,8 +228,8 @@ void Game::Draw() {
         int drawX = boardRotated ? BOARD_SIZE - 1 - blackKing->GetX() : blackKing->GetX();
         int drawY = boardRotated ? BOARD_SIZE - 1 - blackKing->GetY() : blackKing->GetY();
         DrawRectangle(
-            drawX * TILE_SIZE,
-            drawY * TILE_SIZE,
+            offsetX + drawX * TILE_SIZE,
+            offsetY + drawY * TILE_SIZE,
             TILE_SIZE,
             TILE_SIZE,
             Color{255, 0, 0, 100} // Semi-transparent red
@@ -241,8 +259,8 @@ void Game::Draw() {
         }
     }
 
-    // Draw available move highlights
-    if (selectedPiece && GetGameState() != PROMOTION) {
+    // Draw available move highlights only in PLAY state
+    if (GetGameState() == PLAY && selectedPiece) {
         for (const auto& move : validMoves) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
             int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
@@ -256,13 +274,18 @@ void Game::Draw() {
                   move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1))) {
                 // Highlight available moves with a circle
                 DrawCircle(
-                    (drawX * TILE_SIZE) + TILE_SIZE/2,
-                    (drawY * TILE_SIZE) + TILE_SIZE/2,
+                    offsetX + (drawX * TILE_SIZE) + TILE_SIZE/2,
+                    offsetY + (drawY * TILE_SIZE) + TILE_SIZE/2,
                     10,
                     MOVE_HIGHLIGHT
                 );
             }
         }
+    }
+
+    // Draw promotion UI if in promotion state
+    if (GetGameState() == PROMOTION) {
+        DrawPromotionUI();
     }
 }
 
@@ -288,17 +311,23 @@ void Game::HandleInput() {
     if (GetGameState() == PROMOTION) {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mousePos = GetMousePosition();
+            
+            // Calculate board position
+            int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+            int offsetX = (GetScreenWidth() - boardPixelSize) / 2;
+            int offsetY = (GetScreenHeight() - boardPixelSize) / 2;
+
             float spacing = 100.0f;
-            float startX = GetScreenWidth() / 2 - (spacing * 4 / 2);
-            float y = GetScreenHeight() / 2 - 50;
+            float startX = offsetX + (boardPixelSize - spacing * 4) / 2;
+            float y = offsetY + (boardPixelSize - 64) / 2;  // 64 is piece texture size
 
             // Check which piece was clicked
             for (int i = 0; i < 4; i++) {
                 Rectangle pieceRect = {
                     startX + i * spacing,
                     y,
-                    64,  // Assuming piece texture size
-                    64   // Assuming piece texture size
+                    64,  // Piece texture size
+                    64   // Piece texture size
                 };
 
                 if (CheckCollisionPointRec(mousePos, pieceRect)) {
@@ -331,12 +360,13 @@ void Game::HandleInput() {
                 Piece* clickedPiece = const_cast<Piece*>(GetPieceAt(boardPos.x, boardPos.y));
                 
                 if (selectedPiece) {
+                    // If clicking a piece of the current player's color
                     if (clickedPiece && clickedPiece->IsWhite() == isWhiteTurn) {
-                        // If clicking a different piece of same color, select it
+                        // Select the new piece
                         selectedPiece = clickedPiece;
                         validMoves = GetValidMoves(selectedPiece);
                     } else {
-                        // Check if it's a valid move for the currently selected piece
+                        // Try to move to the clicked square
                         bool isValidMove = false;
                         for (const auto& move : validMoves) {
                             if (move.x == boardPos.x && move.y == boardPos.y) {
@@ -353,243 +383,13 @@ void Game::HandleInput() {
                             validMoves.clear();
                         }
                     }
-                } else {
-                    // Select new piece if no piece is currently selected
-                    SelectPiece(boardPos.x, boardPos.y);
+                } else if (clickedPiece && clickedPiece->IsWhite() == isWhiteTurn) {
+                    // Select new piece if it's the current player's turn
+                    selectedPiece = clickedPiece;
+                    validMoves = GetValidMoves(selectedPiece);
                 }
             }
         }
-    }
-}
-
-void Game::DrawBoard() {
-    // Get window dimensions for centering
-    int windowWidth = GetScreenWidth();
-    int windowHeight = GetScreenHeight();
-    
-    // Calculate board dimensions
-    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
-    int offsetX = (windowWidth - boardPixelSize) / 2;
-    int offsetY = (windowHeight - boardPixelSize) / 2;
-
-    // Draw background to cover entire screen
-    Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
-    Rectangle destRect = { 0, 0, (float)windowWidth, (float)windowHeight };
-    DrawTexturePro(backgroundTexture, sourceRect, destRect, {0, 0}, 0.0f, WHITE);
-
-    // Draw the chess board squares
-    int offsetRightX = 20;  // Add scaling from the right
-    for (int y = 0; y < BOARD_SIZE; y++) {
-        for (int x = 0; x < BOARD_SIZE; x++) {
-            int drawX = boardRotated ? BOARD_SIZE - 1 - x : x;
-            int drawY = boardRotated ? BOARD_SIZE - 1 - y : y;
-            Color squareColor = ((x + y) % 2 == 0) ? LIGHT_SQUARE : DARK_SQUARE;
-            DrawRectangle(drawX * TILE_SIZE, drawY * TILE_SIZE, TILE_SIZE, TILE_SIZE, squareColor);
-
-            // Draw horizontal labels (A to H)
-            if (y == BOARD_SIZE - 1) {
-                char colLabel = boardRotated ? ('h' - x) : ('a' + x);
-                char label[2] = {colLabel, '\0'};
-                int textWidth = MeasureText(label, 20);
-                int labelY = BOARD_SIZE * TILE_SIZE + 5;
-                DrawText(label, drawX * TILE_SIZE + (TILE_SIZE - textWidth) / 2, labelY, 20, BLACK);
-            }
-
-            // Draw vertical labels (1 to 8)
-            if (x == 0) {
-                // Draw vertical labels (1 to 8) on the left side
-                char rowLabel = (isWhiteTurn && !boardRotated) ? ('1' + y) : ('8' - y);
-                char label[2] = {rowLabel, '\0'};
-                int labelX = 10;  // Adjust position to ensure visibility
-                int textHeight = 20;  // Font size
-                DrawText(label, labelX, drawY * TILE_SIZE + (TILE_SIZE - textHeight) / 2, textHeight, BLACK);  // Center vertically within tile
-            }
-        }
-    }
-    
-    // Draw pieces
-    for (const auto& piece : whiteTeam.GetPieces()) {
-        Vector2 pos = GetCenteredPiecePosition(*piece);
-        Texture2D tex = piece->GetTexture();
-        if (tex.id > 0) {  // Only draw if texture is valid
-            DrawTexture(tex, pos.x, pos.y, WHITE);
-        } else {
-            // Draw a placeholder if texture is missing
-            DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, WHITE);
-        }
-    }
-    
-    for (const auto& piece : blackTeam.GetPieces()) {
-        Vector2 pos = GetCenteredPiecePosition(*piece);
-        Texture2D tex = piece->GetTexture();
-        if (tex.id > 0) {  // Only draw if texture is valid
-            DrawTexture(tex, pos.x, pos.y, WHITE);
-        } else {
-            // Draw a placeholder if texture is missing
-            DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, BLACK);
-        }
-    }
-}
-
-void Game::DrawLabels() {
-    int offsetRightX = 20;  // Add scaling from the right
-    for (int y = 0; y < BOARD_SIZE; y++) {
-        // Draw vertical labels (1 to 8) on the left side
-        char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
-        char label[2] = {rowLabel, '\0'};
-        int labelX = 10;  // Adjust position to ensure visibility
-        int textHeight = 20;  // Font size
-        DrawText(label, labelX, y * TILE_SIZE + (TILE_SIZE - textHeight) / 2, textHeight, BLACK);  // Center vertically within tile
-    }
-
-    for (int x = 0; x < BOARD_SIZE; x++) {
-        // Draw horizontal labels (A to H) at the bottom
-        char colLabel = 'a' + x;
-        char label[2] = {colLabel, '\0'};
-        int textWidth = MeasureText(label, 20);
-        int labelY = BOARD_SIZE * TILE_SIZE + 5;
-        DrawText(label, x * TILE_SIZE + (TILE_SIZE - textWidth) / 2, labelY, 20, BLACK);
-    }
-}
-
-void Game::DrawMenu() {
-    // Draw background
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), DARKGRAY);
-
-    const char* title = "Chess Game";
-    const char* developers = "Developed by: Shehryar, Sufyan & Faizan";
-    const char* playText = "Play";
-
-    int titleWidth = MeasureText(title, 40);
-    int devWidth = MeasureText(developers, 20);
-    int playWidth = MeasureText(playText, 30);
-
-    // Draw title
-    DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 3, 40, RAYWHITE);
-
-    // Draw Play button
-    int buttonWidth = playWidth + 60;  // Add padding
-    int buttonHeight = 40;
-    int buttonX = (GetScreenWidth() - buttonWidth) / 2;
-    int buttonY = GetScreenHeight() / 2;
-    
-    // Draw button background with hover effect
-    Vector2 mousePos = GetMousePosition();
-    Color buttonColor = RAYWHITE;
-    if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
-        mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
-        buttonColor = LIGHTGRAY;  // Change color on hover
-    }
-    DrawRectangle(buttonX, buttonY, buttonWidth, buttonHeight, buttonColor);
-    
-    // Draw button text
-    DrawText(playText, 
-        buttonX + (buttonWidth - playWidth) / 2,
-        buttonY + (buttonHeight - 30) / 2,  // 30 is font size
-        30, 
-        BLACK
-    );
-
-    // Draw developers credit
-    DrawText(developers, 
-        (GetScreenWidth() - devWidth) / 2,
-        GetScreenHeight() - 50,
-        20,
-        LIGHTGRAY
-    );
-}
-
-void Game::DrawPromotionUI() {
-    // Draw semi-transparent background
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Color{0, 0, 0, 200});
-
-    // Get texture manager instance
-    auto texManager = TextureManager::GetInstance();
-    bool isWhite = isWhiteTurn;  // The pawn being promoted belongs to the player who just moved
-
-    // Draw promotion pieces
-    const std::vector<std::string> pieceTypes = {"queen", "rook", "bishop", "knight"};
-    float spacing = 100.0f;
-    float startX = GetScreenWidth() / 2 - (spacing * pieceTypes.size() / 2);
-    float y = GetScreenHeight() / 2 - 50;
-
-    for (size_t i = 0; i < pieceTypes.size(); i++) {
-        Vector2 piecePos = {startX + i * spacing, y};
-        Texture2D texture = texManager->GetTexture(
-            isWhite ? "white_" + pieceTypes[i] : "black_" + pieceTypes[i]
-        );
-        
-        DrawTexture(texture, piecePos.x, piecePos.y, Color{255, 255, 255, 255});  // Use full opacity, no tint
-    }
-}
-
-void Game::PromotePawn(PieceType type) {
-    // Create new piece at promotion square
-    Team& team = isWhiteTurn ? whiteTeam : blackTeam;
-    team.RemovePieceAt(promotionSquare.x, promotionSquare.y);
-    team.AddPiece(type, promotionSquare.x, promotionSquare.y);
-
-    // Play move sound
-    if (moveSound.stream.buffer != NULL) {
-        PlaySound(moveSound);
-    }
-
-    // Switch turns and rotate board
-    isWhiteTurn = !isWhiteTurn;
-    ToggleBoardRotation();
-    
-    // Reset promotion square
-    promotionSquare = {-1, -1};
-}
-
-Vector2 Game::ScreenToBoard(Vector2 screenPos) {
-    Vector2 boardPos = (Vector2){
-        floorf(screenPos.x / TILE_SIZE),
-        floorf(screenPos.y / TILE_SIZE)
-    };
-    if (boardRotated) {
-        boardPos.x = BOARD_SIZE - 1 - boardPos.x;
-        boardPos.y = BOARD_SIZE - 1 - boardPos.y;
-    }
-    return boardPos;
-}
-
-Vector2 Game::BoardToScreen(int x, int y) {
-    return (Vector2){
-        static_cast<float>(x * TILE_SIZE),
-        static_cast<float>(y * TILE_SIZE)
-    };
-}
-
-Vector2 Game::GetCenteredPiecePosition(const Piece& piece) {
-    Vector2 boardPos = BoardToScreen(
-        boardRotated ? BOARD_SIZE - 1 - piece.GetX() : piece.GetX(),
-        boardRotated ? BOARD_SIZE - 1 - piece.GetY() : piece.GetY()
-    );
-    return (Vector2){
-        boardPos.x + (TILE_SIZE - piece.GetTexture().width) / 2,
-        boardPos.y + (TILE_SIZE - piece.GetTexture().height) / 2
-    };
-}
-
-const Team& Game::GetWhiteTeam() const {
-    return whiteTeam;
-}
-
-const Team& Game::GetBlackTeam() const {
-    return blackTeam;
-}
-
-void Game::SelectPiece(int x, int y) {
-    // Clear previous selection
-    selectedPiece = nullptr;
-    validMoves.clear();
-
-    // Get piece at the clicked position
-    const Piece* piece = GetPieceAt(x, y);
-    if (piece && piece->IsWhite() == isWhiteTurn) {
-        selectedPiece = const_cast<Piece*>(piece);
-        validMoves = GetValidMoves(selectedPiece);
     }
 }
 
@@ -666,6 +466,7 @@ void Game::MovePiece(int x, int y) {
             if (y == promotionRank) {
                 promotionSquare = {(float)x, (float)y};
                 SetGameState(PROMOTION);
+                // Don't switch turns yet - wait for promotion to complete
                 // Play promotion sound
                 if (promotionSound.stream.buffer != NULL) {
                     PlaySound(promotionSound);
@@ -691,13 +492,332 @@ void Game::MovePiece(int x, int y) {
             }
         }
 
-        isWhiteTurn = !isWhiteTurn;  // Switch turns
-        ToggleBoardRotation();  // Rotate the board after a successful move
+        // Only switch turns if not promoting
+        if (GetGameState() != PROMOTION) {
+            isWhiteTurn = !isWhiteTurn;
+            boardRotated = !boardRotated;
+        }
     }
 
     // Clear selection
     selectedPiece = nullptr;
     validMoves.clear();
+}
+
+void Game::PromotePawn(PieceType type) {
+    // Create new piece at promotion square
+    Team& team = isWhiteTurn ? whiteTeam : blackTeam;
+    team.RemovePieceAt(promotionSquare.x, promotionSquare.y);
+    team.AddPiece(type, promotionSquare.x, promotionSquare.y);
+
+    // Play move sound
+    if (moveSound.stream.buffer != NULL) {
+        PlaySound(moveSound);
+    }
+
+    // Clear any selected piece and valid moves
+    selectedPiece = nullptr;
+    validMoves.clear();
+
+    // Switch turns and rotate board after promotion is complete
+    isWhiteTurn = !isWhiteTurn;
+    boardRotated = !boardRotated;
+    
+    // Reset promotion square and state
+    promotionSquare = {-1, -1};
+    SetGameState(PLAY);
+}
+
+void Game::DrawPromotionUI() {
+    // Draw semi-transparent background
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Color{0, 0, 0, 200});
+
+    // Get texture manager instance
+    auto texManager = TextureManager::GetInstance();
+    
+    // The pawn being promoted belongs to the current player
+    bool isWhitePiece = isWhiteTurn;
+
+    // Calculate board position
+    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+    int offsetX = (GetScreenWidth() - boardPixelSize) / 2;
+    int offsetY = (GetScreenHeight() - boardPixelSize) / 2;
+
+    // Draw promotion pieces
+    const std::vector<std::string> pieceTypes = {"queen", "rook", "bishop", "knight"};
+    float spacing = 100.0f;
+    float startX = offsetX + (boardPixelSize - spacing * pieceTypes.size()) / 2;
+    float y = offsetY + (boardPixelSize - 64) / 2;  // 64 is piece texture size
+
+    for (size_t i = 0; i < pieceTypes.size(); i++) {
+        Vector2 piecePos = {startX + i * spacing, y};
+        std::string prefix = isWhitePiece ? "white_" : "black_";
+        Texture2D texture = texManager->GetTexture(prefix + pieceTypes[i]);
+        
+        DrawTexture(texture, piecePos.x, piecePos.y, WHITE);  // Always use WHITE tint to preserve piece color
+    }
+}
+
+void Game::DrawLabels() {
+    // Get window dimensions for centering
+    int windowWidth = GetScreenWidth();
+    int windowHeight = GetScreenHeight();
+    
+    // Calculate board offset
+    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+    int offsetX = (windowWidth - boardPixelSize) / 2;
+    int offsetY = (windowHeight - boardPixelSize) / 2;
+
+    // Constants for label styling
+    const int LABEL_SIZE = 14;  // Smaller font size for better visibility
+    const int LABEL_MARGIN = 5;
+    const Color LABEL_COLOR = GREEN;
+
+    // Draw vertical labels (1 to 8)
+    for (int y = 0; y < BOARD_SIZE; y++) {
+        // Keep the actual square notation (1-8 from bottom to top)
+        char rankLabel = boardRotated ? ('1' + (BOARD_SIZE - 1 - y)) : ('1' + y);
+        char label[2] = {rankLabel, '\0'};
+        
+        // Draw numbers outside the board area
+        DrawText(
+            label,
+            offsetX - LABEL_SIZE - LABEL_MARGIN * 3,  // Moved further left
+            offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
+            LABEL_SIZE,
+            LABEL_COLOR
+        );
+    }
+
+    // Draw horizontal labels (a to h)
+    for (int x = 0; x < BOARD_SIZE; x++) {
+        // Use lowercase letters (a-h from left to right)
+        char colLabel = 'a' + x;  
+        char label[2] = {colLabel, '\0'};
+        
+        // Draw letters in fixed positions regardless of rotation
+        DrawText(
+            label,
+            offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
+            offsetY + boardPixelSize + LABEL_MARGIN,
+            LABEL_SIZE,
+            LABEL_COLOR
+        );
+    }
+}
+
+void Game::DrawBoard() {
+    // Get window dimensions for centering
+    int windowWidth = GetScreenWidth();
+    int windowHeight = GetScreenHeight();
+    
+    // Calculate board offset
+    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+    int offsetX = (windowWidth - boardPixelSize) / 2;
+    int offsetY = (windowHeight - boardPixelSize) / 2;
+
+    // Draw background to cover entire screen
+    Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
+    Rectangle destRect = { 0, 0, (float)windowWidth, (float)windowHeight };
+    DrawTexturePro(backgroundTexture, sourceRect, destRect, {0, 0}, 0.0f, WHITE);
+
+    // Draw the chess board squares
+    for (int y = 0; y < BOARD_SIZE; y++) {
+        for (int x = 0; x < BOARD_SIZE; x++) {
+            int drawX = boardRotated ? BOARD_SIZE - 1 - x : x;
+            int drawY = boardRotated ? BOARD_SIZE - 1 - y : y;
+            Color squareColor = ((x + y) % 2 == 0) ? LIGHT_SQUARE : DARK_SQUARE;
+            DrawRectangle(
+                offsetX + drawX * TILE_SIZE,
+                offsetY + drawY * TILE_SIZE,
+                TILE_SIZE,
+                TILE_SIZE,
+                squareColor
+            );
+
+            // Draw vertical labels (1 to 8) at the left edge of first column
+            if (boardRotated ? x == BOARD_SIZE - 1 : x == 0) {
+                char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
+                char label[2] = {rowLabel, '\0'};
+                
+                // Draw numbers outside the board area
+                DrawText(
+                    label,
+                    offsetX + drawX * TILE_SIZE + 2,  // Small margin from edge
+                    offsetY + drawY * TILE_SIZE + 2,  // Small margin from top
+                    14,  // Smaller font size
+                    GREEN
+                );
+            }
+        }
+    }
+
+    // Draw horizontal labels (a to h)
+    const int LABEL_SIZE = 20;
+    const int LABEL_MARGIN = 5;
+    const Color LABEL_COLOR = GREEN;
+
+    for (int x = 0; x < BOARD_SIZE; x++) {
+        int drawX = boardRotated ? BOARD_SIZE - 1 - x : x;
+        char colLabel = boardRotated ? ('h' - x) : ('a' + x);  
+        char label[2] = {colLabel, '\0'};
+        
+        // Draw below the board
+        DrawText(
+            label,
+            offsetX + drawX * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
+            offsetY + boardPixelSize + LABEL_MARGIN,
+            LABEL_SIZE,
+            LABEL_COLOR
+        );
+    }
+    
+    // Draw pieces
+    for (const auto& piece : whiteTeam.GetPieces()) {
+        Vector2 pos = GetCenteredPiecePosition(*piece);
+        Texture2D tex = piece->GetTexture();
+        if (tex.id > 0) {  // Only draw if texture is valid
+            DrawTexture(tex, pos.x, pos.y, WHITE);
+        } else {
+            // Draw a placeholder if texture is missing
+            DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, WHITE);
+        }
+    }
+    
+    for (const auto& piece : blackTeam.GetPieces()) {
+        Vector2 pos = GetCenteredPiecePosition(*piece);
+        Texture2D tex = piece->GetTexture();
+        if (tex.id > 0) {  // Only draw if texture is valid
+            DrawTexture(tex, pos.x, pos.y, WHITE);
+        } else {
+            // Draw a placeholder if texture is missing
+            DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, BLACK);
+        }
+    }
+}
+
+void Game::DrawMenu() {
+    // Draw background
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), DARKGRAY);
+
+    const char* title = "Chess Game";
+    const char* developers = "Developed by: Shehryar, Sufyan & Faizan";
+    const char* playText = "Play";
+
+    int titleWidth = MeasureText(title, 40);
+    int devWidth = MeasureText(developers, 20);
+    int playWidth = MeasureText(playText, 30);
+
+    // Draw title
+    DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 3, 40, RAYWHITE);
+
+    // Draw Play button
+    int buttonWidth = playWidth + 60;  // Add padding
+    int buttonHeight = 40;
+    int buttonX = (GetScreenWidth() - buttonWidth) / 2;
+    int buttonY = GetScreenHeight() / 2;
+    
+    // Draw button background with hover effect
+    Vector2 mousePos = GetMousePosition();
+    Color buttonColor = RAYWHITE;
+    if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
+        mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
+        buttonColor = LIGHTGRAY;  // Change color on hover
+    }
+    DrawRectangle(buttonX, buttonY, buttonWidth, buttonHeight, buttonColor);
+    
+    // Draw button text
+    DrawText(playText, 
+        buttonX + (buttonWidth - playWidth) / 2,
+        buttonY + (buttonHeight - 30) / 2,  // 30 is font size
+        30, 
+        BLACK
+    );
+
+    // Draw developers credit
+    DrawText(developers, 
+        (GetScreenWidth() - devWidth) / 2,
+        GetScreenHeight() - 50,
+        20,
+        LIGHTGRAY
+    );
+}
+
+Vector2 Game::ScreenToBoard(Vector2 screenPos) {
+    // Calculate board offset
+    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+    int offsetX = (GetScreenWidth() - boardPixelSize) / 2;
+    int offsetY = (GetScreenHeight() - boardPixelSize) / 2;
+
+    // Adjust screen position by offset
+    float relativeX = screenPos.x - offsetX;
+    float relativeY = screenPos.y - offsetY;
+
+    // Convert to board coordinates
+    int boardX = (int)(relativeX / TILE_SIZE);
+    int boardY = (int)(relativeY / TILE_SIZE);
+
+    // Handle board rotation
+    if (boardRotated) {
+        boardX = BOARD_SIZE - 1 - boardX;
+        boardY = BOARD_SIZE - 1 - boardY;
+    }
+
+    return Vector2{(float)boardX, (float)boardY};
+}
+
+Vector2 Game::BoardToScreen(int x, int y) {
+    // Get window dimensions for centering
+    int windowWidth = GetScreenWidth();
+    int windowHeight = GetScreenHeight();
+    
+    // Calculate board offset
+    int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+    int offsetX = (windowWidth - boardPixelSize) / 2;
+    int offsetY = (windowHeight - boardPixelSize) / 2;
+
+    // Handle board rotation
+    if (boardRotated) {
+        x = BOARD_SIZE - 1 - x;
+        y = BOARD_SIZE - 1 - y;
+    }
+
+    return (Vector2){
+        static_cast<float>(offsetX + x * TILE_SIZE),
+        static_cast<float>(offsetY + y * TILE_SIZE)
+    };
+}
+
+Vector2 Game::GetCenteredPiecePosition(const Piece& piece) {
+    // Get the base board position with proper offset
+    Vector2 boardPos = BoardToScreen(piece.GetX(), piece.GetY());
+
+    // Center the piece within its tile
+    return (Vector2){
+        boardPos.x + (TILE_SIZE - piece.GetTexture().width) / 2,
+        boardPos.y + (TILE_SIZE - piece.GetTexture().height) / 2
+    };
+}
+
+const Team& Game::GetWhiteTeam() const {
+    return whiteTeam;
+}
+
+const Team& Game::GetBlackTeam() const {
+    return blackTeam;
+}
+
+void Game::SelectPiece(int x, int y) {
+    // Clear previous selection
+    selectedPiece = nullptr;
+    validMoves.clear();
+
+    // Get piece at the clicked position
+    const Piece* piece = GetPieceAt(x, y);
+    if (piece && piece->IsWhite() == isWhiteTurn) {
+        selectedPiece = const_cast<Piece*>(piece);
+        validMoves = GetValidMoves(selectedPiece);
+    }
 }
 
 bool Game::IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePos) const {
@@ -799,5 +919,4 @@ const Piece* Game::GetPieceAt(int x, int y) const {
 
 void Game::ToggleBoardRotation() {
     boardRotated = !boardRotated;
-    targetRotation = boardRotated ? 180.0f : 0.0f;
-} 
+}
