@@ -569,9 +569,45 @@ void Game::DrawLabels() {
     int offsetY = (windowHeight - boardPixelSize) / 2;
 
     // Constants for label styling
-    const int LABEL_SIZE = 14;  // Smaller font size for better visibility
-    const int LABEL_MARGIN = 5;
-    const Color LABEL_COLOR = GREEN;
+    const int LABEL_SIZE = 20;
+    const int LABEL_MARGIN = 8;
+    const Color LABEL_COLOR = RAYWHITE;
+    const Color SHADOW_COLOR = BLACK;
+    const int SHADOW_OFFSET = 1;
+    const int PLAYER_LABEL_SIZE = 25;  // Slightly larger font for player labels
+
+    // Draw player labels
+    // Player 1 (top left)
+    DrawText(  // Shadow
+        "Player 1",
+        LABEL_MARGIN + SHADOW_OFFSET,
+        LABEL_MARGIN + SHADOW_OFFSET,
+        PLAYER_LABEL_SIZE,
+        SHADOW_COLOR
+    );
+    DrawText(  // Text
+        "Player 1",
+        LABEL_MARGIN,
+        LABEL_MARGIN,
+        PLAYER_LABEL_SIZE,
+        LABEL_COLOR
+    );
+
+    // Player 2 (bottom left)
+    DrawText(  // Shadow
+        "Player 2",
+        LABEL_MARGIN + SHADOW_OFFSET,
+        windowHeight - PLAYER_LABEL_SIZE - LABEL_MARGIN + SHADOW_OFFSET,
+        PLAYER_LABEL_SIZE,
+        SHADOW_COLOR
+    );
+    DrawText(  // Text
+        "Player 2",
+        LABEL_MARGIN,
+        windowHeight - PLAYER_LABEL_SIZE - LABEL_MARGIN,
+        PLAYER_LABEL_SIZE,
+        LABEL_COLOR
+    );
 
     // Draw vertical labels (1 to 8)
     for (int y = 0; y < BOARD_SIZE; y++) {
@@ -579,10 +615,17 @@ void Game::DrawLabels() {
         char rankLabel = boardRotated ? ('1' + (BOARD_SIZE - 1 - y)) : ('1' + y);
         char label[2] = {rankLabel, '\0'};
         
-        // Draw numbers outside the board area
-        DrawText(
+        // Draw numbers outside the board area with shadow
+        DrawText(  // Draw shadow first
             label,
-            offsetX - LABEL_SIZE - LABEL_MARGIN * 3,  // Moved further left
+            offsetX - LABEL_SIZE - LABEL_MARGIN * 3 + SHADOW_OFFSET,
+            offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET,
+            LABEL_SIZE,
+            SHADOW_COLOR
+        );
+        DrawText(  // Draw main text
+            label,
+            offsetX - LABEL_SIZE - LABEL_MARGIN * 3,
             offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
             LABEL_SIZE,
             LABEL_COLOR
@@ -595,8 +638,15 @@ void Game::DrawLabels() {
         char colLabel = 'a' + x;  
         char label[2] = {colLabel, '\0'};
         
-        // Draw letters in fixed positions regardless of rotation
-        DrawText(
+        // Draw below the board with shadow effect
+        DrawText(  // Draw shadow first
+            label,
+            offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET,
+            offsetY + boardPixelSize + LABEL_MARGIN + SHADOW_OFFSET,
+            LABEL_SIZE,
+            SHADOW_COLOR
+        );
+        DrawText(  // Draw main text
             label,
             offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
             offsetY + boardPixelSize + LABEL_MARGIN,
@@ -634,21 +684,6 @@ void Game::DrawBoard() {
                 TILE_SIZE,
                 squareColor
             );
-
-            // Draw vertical labels (1 to 8) at the left edge of first column
-            if (boardRotated ? x == BOARD_SIZE - 1 : x == 0) {
-                char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
-                char label[2] = {rowLabel, '\0'};
-                
-                // Draw numbers outside the board area
-                DrawText(
-                    label,
-                    offsetX + drawX * TILE_SIZE + 2,  // Small margin from edge
-                    offsetY + drawY * TILE_SIZE + 2,  // Small margin from top
-                    14,  // Smaller font size
-                    GREEN
-                );
-            }
         }
     }
 
