@@ -733,7 +733,7 @@ void Game::DrawBoard() {
 
 void Game::DrawMenu() {
     // Draw background
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), DARKGRAY);
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), DARKBLUE);
 
     const char* title = "Chess Game";
     const char* developers = "Developed by: Shehryar, Sufyan & Faizan";
@@ -880,10 +880,10 @@ bool Game::IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePo
 
 std::vector<Vector2> Game::GetValidMoves(Piece* piece) {
     if (!piece) return {};
-    
+
     std::vector<Vector2> moves = piece->GetValidMoves(*this);
     std::vector<Vector2> legalMoves;
-    
+
     // Find our king
     const Team& ourTeam = piece->IsWhite() ? whiteTeam : blackTeam;
     const Piece* ourKing = nullptr;
@@ -893,46 +893,50 @@ std::vector<Vector2> Game::GetValidMoves(Piece* piece) {
             break;
         }
     }
-    
+
     if (!ourKing) return moves; // Should never happen in a valid game
-    
+
     // Store original position
     Vector2 originalPos = piece->GetPosition();
-    
+
     // Test each move to see if it leaves our king in check
     for (const auto& move : moves) {
         // Store piece at target position (if any)
-        const Piece* capturedPiece = GetPieceAt(move.x, move.y);
-        Vector2 capturedPos = {-1, -1};
-        
-        if (capturedPiece) {
-            capturedPos = {(float)capturedPiece->GetX(), (float)capturedPiece->GetY()};
-        }
-        
-        // Make the move temporarily
+        Piece* capturedPiece = const_cast<Piece*>(GetPieceAt(move.x, move.y));
+        bool wasCaptured = false;
+
+        // Temporarily move the piece
         piece->SetPosition(move.x, move.y);
-        
-        // Check if our king is in check after the move
+
+        // Remove captured piece from board temporarily
+        if (capturedPiece) {
+            wasCaptured = true;
+            capturedPiece->SetPosition(-1, -1);  // Move it off the board
+        }
+
+        // Check if the move puts our king in check
         bool kingInCheck;
         if (piece->GetType() == PieceType::KING) {
-            // If moving the king, check the new position
-            kingInCheck = IsSquareUnderAttack(move.x, move.y, !piece->IsWhite(), capturedPos);
+            kingInCheck = IsSquareUnderAttack(move.x, move.y, !piece->IsWhite(), originalPos);
         } else {
-            // For other pieces, check the king's current position
-            kingInCheck = IsSquareUnderAttack(ourKing->GetX(), ourKing->GetY(), !piece->IsWhite(), capturedPos);
+            kingInCheck = IsSquareUnderAttack(ourKing->GetX(), ourKing->GetY(), !piece->IsWhite(), originalPos);
         }
-        
-        // If the move doesn't leave/put our king in check, it's legal
+
+        // Restore board state
+        piece->SetPosition(originalPos.x, originalPos.y);
+        if (wasCaptured) {
+            capturedPiece->SetPosition(move.x, move.y);  // Restore captured piece
+        }
+
+        // If the move doesn't leave our king in check, it's legal
         if (!kingInCheck) {
             legalMoves.push_back(move);
         }
     }
-    
-    // Restore the original position
-    piece->SetPosition(originalPos.x, originalPos.y);
-    
+
     return legalMoves;
 }
+
 
 const Piece* Game::GetPieceAt(int x, int y) const {
     // Check white team pieces
