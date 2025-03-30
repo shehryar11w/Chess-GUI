@@ -687,26 +687,6 @@ void Game::DrawBoard() {
         }
     }
 
-    // Draw horizontal labels (a to h)
-    const int LABEL_SIZE = 20;
-    const int LABEL_MARGIN = 5;
-    const Color LABEL_COLOR = GREEN;
-
-    for (int x = 0; x < BOARD_SIZE; x++) {
-        int drawX = boardRotated ? BOARD_SIZE - 1 - x : x;
-        char colLabel = boardRotated ? ('h' - x) : ('a' + x);  
-        char label[2] = {colLabel, '\0'};
-        
-        // Draw below the board
-        DrawText(
-            label,
-            offsetX + drawX * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
-            offsetY + boardPixelSize + LABEL_MARGIN,
-            LABEL_SIZE,
-            LABEL_COLOR
-        );
-    }
-    
     // Draw pieces
     for (const auto& piece : whiteTeam.GetPieces()) {
         Vector2 pos = GetCenteredPiecePosition(*piece);
