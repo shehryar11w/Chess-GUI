@@ -21,6 +21,7 @@ public:
     Piece* FindPieceAt(int x, int y);
     void RemovePieceAt(int x, int y);
     void AddPiece(PieceType type, int x, int y);  // New method for pawn promotion
+    void Reset();  // Add Reset function
 
 private:
     void SetupPieces();

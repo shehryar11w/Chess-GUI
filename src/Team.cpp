@@ -207,3 +207,9 @@ void Team::AddPiece(PieceType type, int x, int y)
         break;
     }
 }
+
+void Team::Reset() {
+    // Clear all pieces
+    pieces.clear();
+    Team::SetupPieces();
+}

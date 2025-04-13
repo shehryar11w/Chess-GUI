@@ -12,7 +12,8 @@
 enum GameState {
     MENU,
     PLAY,
-    PROMOTION
+    PROMOTION,
+    GAME_OVER
 };
 
 struct Move {
@@ -35,6 +36,7 @@ private:
     std::vector<Vector2> validMoves;
     bool isWhiteTurn;
     bool boardRotated;
+    bool namesRotated;
     Move lastMove;
     Vector2 promotionSquare;
     GameState currentState;
@@ -43,6 +45,10 @@ private:
     Sound checkSound;
     Sound promotionSound;
     Texture2D backgroundTexture;  // Add background texture
+
+    // Add captured pieces tracking
+    std::vector<PieceType> whiteCapturedPieces;
+    std::vector<PieceType> blackCapturedPieces;
 
 public:
     Game();
@@ -69,9 +75,19 @@ public:
     GameState GetGameState() const { return currentState; }
     void SetGameState(GameState state) { currentState = state; }
 
+    // Add methods to handle captured pieces
+    void AddCapturedPiece(PieceType type, bool isWhite);
+    const std::vector<PieceType>& GetWhiteCapturedPieces() const;
+    const std::vector<PieceType>& GetBlackCapturedPieces() const;
+
 private:
     void HandleInput();
     void Draw();
+    bool IsCheckmate(bool isWhite);
+    bool IsStalemate(bool isWhite);
+    void DrawGameOverUI();
+    bool shouldClose = false;  // New shutdown flag
+
 };
 
 #endif
