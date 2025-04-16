@@ -3,17 +3,24 @@
 
 #include "raylib.h"
 #include <string>
-#include <unordered_map>
-#include <memory>
+#include <vector>
 
 class TextureManager {
 private:
     static TextureManager* instance;
-    std::unordered_map<std::string, Texture2D> textures;
+    std::vector<std::pair<std::string, Texture2D>> textures;
     bool initialized;
 
     // Private constructor for singleton
     TextureManager() : initialized(false) {}
+
+    // Helper to find texture by key
+    Texture2D* FindTexture(const std::string& key) {
+        for (auto& pair : textures) {
+            if (pair.first == key) return &pair.second;
+        }
+        return nullptr;
+    }
 
 public:
     static TextureManager* GetInstance() {
@@ -27,8 +34,9 @@ public:
         if (!initialized) {
             // Create a default white texture
             Image whitePixel = GenImageColor(32, 32, WHITE);
-            textures["default"] = LoadTextureFromImage(whitePixel);
+            Texture2D defaultTex = LoadTextureFromImage(whitePixel);
             UnloadImage(whitePixel);
+            textures.push_back({ "default", defaultTex });
             initialized = true;
         }
     }
@@ -50,22 +58,18 @@ public:
             Initialize();
         }
 
-        // Check if texture already exists
-        auto it = textures.find(key);
-        if (it != textures.end()) {
-            return it->second;
+        Texture2D* existing = FindTexture(key);
+        if (existing) {
+            return *existing;
         }
 
-        // Load texture using Raylib's high-level function
         Texture2D tex = LoadTexture(filepath.c_str());
-        
-        // If texture failed to load, return default texture
         if (tex.id == 0) {
             TraceLog(LOG_WARNING, "Failed to load texture: %s", filepath.c_str());
-            return textures["default"];
+            return *FindTexture("default");
         }
 
-        textures[key] = tex;
+        textures.push_back({ key, tex });
         return tex;
     }
 
@@ -74,8 +78,8 @@ public:
             Initialize();
         }
 
-        auto it = textures.find(key);
-        return (it != textures.end()) ? it->second : textures["default"];
+        Texture2D* found = FindTexture(key);
+        return found ? *found : *FindTexture("default");
     }
 
     void UnloadAllTextures() {
@@ -88,5 +92,4 @@ public:
         initialized = false;
     }
 };
-
-#endif 
+#endif
