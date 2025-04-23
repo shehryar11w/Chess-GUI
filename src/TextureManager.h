@@ -31,7 +31,9 @@ public:
             // Create a default white texture
             Image whitePixel = GenImageColor(32, 32, WHITE);
             Texture2D defaultTex = LoadTextureFromImage(whitePixel);
+            Texture2D defaultTex = LoadTextureFromImage(whitePixel);
             UnloadImage(whitePixel);
+            textures.push_back({ "default", defaultTex });
             textures.push_back({ "default", defaultTex });
             initialized = true;
         }
@@ -57,14 +59,19 @@ public:
         Texture2D* existing = FindTexture(key);
         if (existing) {
             return *existing;
+        Texture2D* existing = FindTexture(key);
+        if (existing) {
+            return *existing;
         }
 
         Texture2D tex = LoadTexture(filepath.c_str());
         if (tex.id == 0) {
             TraceLog(LOG_WARNING, "Failed to load texture: %s", filepath.c_str());
             return *FindTexture("default");
+            return *FindTexture("default");
         }
 
+        textures.push_back({ key, tex });
         textures.push_back({ key, tex });
         return tex;
     }
@@ -74,6 +81,8 @@ public:
             Initialize();
         }
 
+        Texture2D* found = FindTexture(key);
+        return found ? *found : *FindTexture("default");
         Texture2D* found = FindTexture(key);
         return found ? *found : *FindTexture("default");
     }
@@ -88,4 +97,6 @@ public:
         initialized = false;
     }
 };
+#endif
+
 #endif

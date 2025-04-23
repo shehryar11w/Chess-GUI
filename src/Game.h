@@ -48,6 +48,10 @@ private:
     vector<PieceType> whiteCapturedPieces;
     vector<PieceType> blackCapturedPieces;
 
+    // Add captured pieces tracking
+    std::vector<PieceType> whiteCapturedPieces;
+    std::vector<PieceType> blackCapturedPieces;
+
 public:
     Game();
     ~Game();
