@@ -4,15 +4,14 @@
 #include "Forward.h"
 #include "raylib.h"
 #include <vector>
-
-// Include the complete definitions needed in the header
 #include "Team.h"
 #include "Piece.h"
-
+using namespace std;
 enum GameState {
     MENU,
     PLAY,
-    PROMOTION
+    PROMOTION,
+    GAME_OVER
 };
 
 struct Move {
@@ -32,9 +31,10 @@ private:
     Team whiteTeam;
     Team blackTeam;
     Piece* selectedPiece;
-    std::vector<Vector2> validMoves;
+    vector<Vector2> validMoves;
     bool isWhiteTurn;
     bool boardRotated;
+    bool namesRotated;
     Move lastMove;
     Vector2 promotionSquare;
     GameState currentState;
@@ -42,7 +42,11 @@ private:
     Sound captureSound;
     Sound checkSound;
     Sound promotionSound;
-    Texture2D backgroundTexture;  // Add background texture
+    Texture2D backgroundTexture;
+
+   
+    vector<PieceType> whiteCapturedPieces;
+    vector<PieceType> blackCapturedPieces;
 
 public:
     Game();
@@ -55,7 +59,7 @@ public:
     Vector2 GetCenteredPiecePosition(const Piece& piece);
     void SelectPiece(int x, int y);
     void MovePiece(int x, int y);
-    std::vector<Vector2> GetValidMoves(Piece* piece);
+    vector<Vector2> GetValidMoves(Piece* piece);
     const Team& GetWhiteTeam() const;
     const Team& GetBlackTeam() const;
     const Piece* GetPieceAt(int x, int y) const;
@@ -69,9 +73,18 @@ public:
     GameState GetGameState() const { return currentState; }
     void SetGameState(GameState state) { currentState = state; }
 
+    void AddCapturedPiece(PieceType type, bool isWhite);
+    const vector<PieceType>& GetWhiteCapturedPieces() const;
+    const vector<PieceType>& GetBlackCapturedPieces() const;
+
 private:
     void HandleInput();
     void Draw();
+    bool IsCheckmate(bool isWhite);
+    bool IsStalemate(bool isWhite);
+    void DrawGameOverUI();
+    bool shouldClose = false; 
+
 };
 
 #endif

@@ -4,10 +4,10 @@
 #include "TextureManager.h"
 #include <cmath>  
 #include <iostream>
+#include <cstring> 
 #include "raylib.h"
 using namespace std;
 
-// Add static member definitions
 const Color Game::LIGHT_SQUARE = RAYWHITE;
 const Color Game::DARK_SQUARE = DARKGRAY;
 const Color Game::MOVE_HIGHLIGHT = GREEN;
@@ -16,13 +16,23 @@ Sound moveSound;
 Sound captureSound;
 Sound checkSound;
 Sound promotionSound;
+Sound gameStartSound;
+Sound gameOverSound;
+Sound checkmateSound;
+Sound stalemateSound;
 Texture2D backgroundTexture;
+Texture2D menuBackgroundTexture;
+Texture2D profileTexture;
+
+char whitePlayerName[32] = "";
+char blackPlayerName[32] = "";
+bool whiteNameActive = false;
+bool blackNameActive = false;
 
 float currentRotation = 0.0f;
 float targetRotation = 0.0f;
-const float rotationSpeed = 2.0f;  // Adjust this value to control speed
+const float rotationSpeed = 2.0f;
 
-// Use the Move struct from Move.h
 Move lastMove;
 
 Vector2 promotionSquare = {-1, -1};
@@ -33,71 +43,79 @@ Game::Game() :
     selectedPiece(nullptr),
     isWhiteTurn(true),
     boardRotated(false),
-    currentState(MENU),  // Start in MENU state
+    namesRotated(false),
+    currentState(MENU),
     promotionSquare({-1, -1})
 {
-    // Set window to be maximized by default
     SetConfigFlags(FLAG_WINDOW_MAXIMIZED);
 
-    // Initialize OpenGL context and wait for it to be ready
     while (!IsWindowReady()) { }
 
-    // Initialize audio device
     InitAudioDevice();
 
-    // Load move sound
     moveSound = LoadSound("assets/move.mp3");
 
-    // Load capture sound
     captureSound = LoadSound("assets/capture.mp3");
 
-    // Load check sound
     checkSound = LoadSound("assets/check.mp3");
 
-    // Load promotion sound
     promotionSound = LoadSound("assets/promote.mp3");
 
-    // Load background texture
-    backgroundTexture = LoadTexture("assets/background.jpg");
+    gameStartSound = LoadSound("assets/game_start.mp3");
 
-    // Initialize texture manager and ensure it's ready
+    gameOverSound = LoadSound("assets/game-end.mp3");
+
+    checkmateSound = LoadSound("assets/checkmate.mp3");
+
+    stalemateSound = LoadSound("assets/stalemate.mp3");
+
+    backgroundTexture = LoadTexture("assets/background.jpg");
+    
+    menuBackgroundTexture = LoadTexture("assets/Mainmenu.png");
+
+    profileTexture = LoadTexture("assets/Profile-Male-Transparent.png");
+
     auto texManager = TextureManager::GetInstance();
     texManager->Initialize();
 
-    // Load piece textures
-    const std::string textureBasePath = "assets/";
-    const std::vector<std::string> pieceTypes = {"pawn", "rook", "knight", "bishop", "queen", "king"};
-    const std::vector<std::string> colors = {"white", "black"};
+    const  string textureBasePath = "assets/";
+    const  vector< string> pieceTypes = {"pawn", "rook", "knight", "bishop", "queen", "king"};
+    const  vector< string> colors = {"white", "black"};
 
     for (const auto& color : colors) {
         for (const auto& piece : pieceTypes) {
-            std::string key = color + "_" + piece;
-            std::string path = textureBasePath + key + ".png";
+             string key = color + "_" + piece;
+             string path = textureBasePath + key + ".png";
             texManager->LoadTextureFromFile(key, path);
         }
     }
 }
 
 Game::~Game() {
-    // Unload move sound
     UnloadSound(moveSound);
 
-    // Unload capture sound
     UnloadSound(captureSound);
 
-    // Unload check sound
     UnloadSound(checkSound);
 
-    // Unload promotion sound
     UnloadSound(promotionSound);
 
-    // Unload background texture
+    UnloadSound(gameStartSound);
+
+    UnloadSound(gameOverSound);
+
+    UnloadSound(checkmateSound);
+
+    UnloadSound(stalemateSound);
+
     UnloadTexture(backgroundTexture);
 
-    // Close audio device
+    UnloadTexture(menuBackgroundTexture);
+
+    UnloadTexture(profileTexture);
+
     CloseAudioDevice();
 
-    // Cleanup textures first
     TextureManager::GetInstance()->UnloadAllTextures();
     TextureManager::Cleanup();
     
@@ -105,10 +123,9 @@ Game::~Game() {
 }
 
 void Game::Run() {
-    while (!WindowShouldClose()) {
+    while (!WindowShouldClose() && !shouldClose) {
         HandleInput();
 
-        // Smooth rotation logic
         if (currentRotation != targetRotation) {
             if (currentRotation < targetRotation) {
                 currentRotation += rotationSpeed;
@@ -138,6 +155,12 @@ void Game::Run() {
                     Draw();
                     DrawPromotionUI();
                     break;
+                case GAME_OVER:
+                    DrawBoard();
+                    DrawLabels();
+                    Draw();
+                    DrawGameOverUI();
+                    break;
             }
         }
         EndDrawing();
@@ -145,30 +168,23 @@ void Game::Run() {
 }
 
 void Game::Draw() {
-    // Get window dimensions for centering
     int windowWidth = GetScreenWidth();
     int windowHeight = GetScreenHeight();
     
-    // Calculate board offset
     int boardPixelSize = TILE_SIZE * BOARD_SIZE;
     int offsetX = (windowWidth - boardPixelSize) / 2;
     int offsetY = (windowHeight - boardPixelSize) / 2;
 
-    // Draw the board first
     DrawBoard();
     
-    // Draw labels
     DrawLabels();
 
-    // Only draw move highlights if we're in PLAY state
     if (GetGameState() == PLAY) {
-        // Draw capture highlights first
         if (selectedPiece) {
             for (const auto& move : validMoves) {
                 int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
                 int drawY = boardRotated ? BOARD_SIZE - 1 - move.y : move.y;
                 if (GetPieceAt(move.x, move.y) && GetPieceAt(move.x, move.y)->GetType() != PieceType::KING) {
-                    // Highlight capture moves with a rectangle
                     DrawRectangle(
                         offsetX + drawX * TILE_SIZE,
                         offsetY + drawY * TILE_SIZE,
@@ -180,10 +196,9 @@ void Game::Draw() {
                            abs(lastMove.end.y - lastMove.start.y) == 2 &&
                            lastMove.piece->GetType() == PieceType::PAWN &&
                            lastMove.end.x == move.x &&
-                           lastMove.end.y == selectedPiece->GetY() &&  // Check if enemy pawn is on same rank
-                           abs(move.x - selectedPiece->GetX()) == 1 && // Check if moving diagonally
-                           move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) { // Check if moving to correct square
-                    // Highlight en passant moves with a blue rectangle
+                           lastMove.end.y == selectedPiece->GetY() &&
+                           abs(move.x - selectedPiece->GetX()) == 1 &&
+                           move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) {
                     DrawRectangle(
                         offsetX + drawX * TILE_SIZE,
                         offsetY + drawY * TILE_SIZE,
@@ -196,7 +211,6 @@ void Game::Draw() {
         }
     }
 
-    // Find kings and check if they're in check
     const Piece* whiteKing = nullptr;
     const Piece* blackKing = nullptr;
     for (const auto& piece : whiteTeam.GetPieces()) {
@@ -212,7 +226,6 @@ void Game::Draw() {
         }
     }
 
-    // Draw check highlight
     if (whiteKing && IsSquareUnderAttack(whiteKing->GetX(), whiteKing->GetY(), false)) {
         int drawX = boardRotated ? BOARD_SIZE - 1 - whiteKing->GetX() : whiteKing->GetX();
         int drawY = boardRotated ? BOARD_SIZE - 1 - whiteKing->GetY() : whiteKing->GetY();
@@ -221,7 +234,7 @@ void Game::Draw() {
             offsetY + drawY * TILE_SIZE,
             TILE_SIZE,
             TILE_SIZE,
-            Color{255, 0, 0, 100} // Semi-transparent red
+            Color{255, 0, 0, 100}
         );
     }
     if (blackKing && IsSquareUnderAttack(blackKing->GetX(), blackKing->GetY(), true)) {
@@ -232,18 +245,16 @@ void Game::Draw() {
             offsetY + drawY * TILE_SIZE,
             TILE_SIZE,
             TILE_SIZE,
-            Color{255, 0, 0, 100} // Semi-transparent red
+            Color{255, 0, 0, 100}
         );
     }
 
-    // Draw pieces
     for (const auto& piece : whiteTeam.GetPieces()) {
         Vector2 pos = GetCenteredPiecePosition(*piece);
         Texture2D tex = piece->GetTexture();
-        if (tex.id > 0) {  // Only draw if texture is valid
+        if (tex.id > 0) {
             DrawTexture(tex, pos.x, pos.y, WHITE);
         } else {
-            // Draw a placeholder if texture is missing
             DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, WHITE);
         }
     }
@@ -251,15 +262,13 @@ void Game::Draw() {
     for (const auto& piece : blackTeam.GetPieces()) {
         Vector2 pos = GetCenteredPiecePosition(*piece);
         Texture2D tex = piece->GetTexture();
-        if (tex.id > 0) {  // Only draw if texture is valid
+        if (tex.id > 0) {
             DrawTexture(tex, pos.x, pos.y, WHITE);
         } else {
-            // Draw a placeholder if texture is missing
             DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, BLACK);
         }
     }
 
-    // Draw available move highlights only in PLAY state
     if (GetGameState() == PLAY && selectedPiece) {
         for (const auto& move : validMoves) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - move.x : move.x;
@@ -272,7 +281,6 @@ void Game::Draw() {
                   lastMove.end.y == selectedPiece->GetY() &&
                   abs(move.x - selectedPiece->GetX()) == 1 &&
                   move.y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1))) {
-                // Highlight available moves with a circle
                 DrawCircle(
                     offsetX + (drawX * TILE_SIZE) + TILE_SIZE/2,
                     offsetY + (drawY * TILE_SIZE) + TILE_SIZE/2,
@@ -283,26 +291,92 @@ void Game::Draw() {
         }
     }
 
-    // Draw promotion UI if in promotion state
     if (GetGameState() == PROMOTION) {
         DrawPromotionUI();
     }
 }
-
 void Game::HandleInput() {
     if (GetGameState() == MENU) {
-        // Check for Play button click
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            Vector2 mousePos = GetMousePosition();
-            int playWidth = MeasureText("Play", 30);
-            int buttonWidth = playWidth + 60;
-            int buttonHeight = 40;
-            int buttonX = (GetScreenWidth() - buttonWidth) / 2;
-            int buttonY = GetScreenHeight() / 2;
+        Vector2 mousePos = GetMousePosition();
 
-            if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
-                mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
-                SetGameState(PLAY);
+        int inputWidth = 400;
+        int inputHeight = 50;
+        int inputX = (GetScreenWidth() - inputWidth) / 2;
+        int inputY = GetScreenHeight() / 3 + 50;
+
+        Rectangle whiteInputRect = {
+            (float)inputX,
+            (float)(inputY - 12),
+            (float)inputWidth,
+            (float)inputHeight
+        };
+        Rectangle blackInputRect = {
+            (float)inputX,
+            (float)(inputY + 140 - 12),
+            (float)inputWidth,
+            (float)inputHeight
+        };
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if (CheckCollisionPointRec(mousePos, whiteInputRect)) {
+                whiteNameActive = true;
+                blackNameActive = false;
+            } else if (CheckCollisionPointRec(mousePos, blackInputRect)) {
+                whiteNameActive = false;
+                blackNameActive = true;
+            } else {
+                whiteNameActive = false;
+                blackNameActive = false;
+            }
+
+            const char* playText = "Play";
+            int playWidth = MeasureText(playText, 40);
+            int buttonWidth = playWidth + 100;
+            int buttonHeight = 60;
+            int buttonX = (GetScreenWidth() - buttonWidth) / 2;
+            int buttonY = GetScreenHeight() / 2 + 50 + 40;
+
+            Rectangle playButtonRect = {
+                (float)buttonX,
+                (float)(buttonY + (27)),
+                (float)buttonWidth,
+                (float)buttonHeight
+            };
+
+            if (CheckCollisionPointRec(mousePos, playButtonRect)) {
+                if (strlen(whitePlayerName) > 0 && strlen(blackPlayerName) > 0) {
+                    if (gameStartSound.stream.buffer != NULL) {
+                        PlaySound(gameStartSound);
+                    }
+                    SetGameState(PLAY);
+                }
+            }
+        }
+
+        if (whiteNameActive) {
+            int key = GetCharPressed();
+            while (key > 0) {
+                if (strlen(whitePlayerName) < 31) {
+                    whitePlayerName[strlen(whitePlayerName)] = (char)key;
+                    whitePlayerName[strlen(whitePlayerName) + 1] = '\0';
+                }
+                key = GetCharPressed();
+            }
+            if (IsKeyPressed(KEY_BACKSPACE) && strlen(whitePlayerName) > 0) {
+                whitePlayerName[strlen(whitePlayerName) - 1] = '\0';
+            }
+        }
+        else if (blackNameActive) {
+            int key = GetCharPressed();
+            while (key > 0) {
+                if (strlen(blackPlayerName) < 31) {
+                    blackPlayerName[strlen(blackPlayerName)] = (char)key;
+                    blackPlayerName[strlen(blackPlayerName) + 1] = '\0';
+                }
+                key = GetCharPressed();
+            }
+            if (IsKeyPressed(KEY_BACKSPACE) && strlen(blackPlayerName) > 0) {
+                blackPlayerName[strlen(blackPlayerName) - 1] = '\0';
             }
         }
         return;
@@ -312,22 +386,20 @@ void Game::HandleInput() {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 mousePos = GetMousePosition();
             
-            // Calculate board position
             int boardPixelSize = TILE_SIZE * BOARD_SIZE;
             int offsetX = (GetScreenWidth() - boardPixelSize) / 2;
             int offsetY = (GetScreenHeight() - boardPixelSize) / 2;
 
             float spacing = 100.0f;
             float startX = offsetX + (boardPixelSize - spacing * 4) / 2;
-            float y = offsetY + (boardPixelSize - 64) / 2;  // 64 is piece texture size
+            float y = offsetY + (boardPixelSize - 64) / 2;
 
-            // Check which piece was clicked
             for (int i = 0; i < 4; i++) {
                 Rectangle pieceRect = {
                     startX + i * spacing,
                     y,
-                    64,  // Piece texture size
-                    64   // Piece texture size
+                    64,
+                    64
                 };
 
                 if (CheckCollisionPointRec(mousePos, pieceRect)) {
@@ -340,9 +412,67 @@ void Game::HandleInput() {
                         default: return;
                     }
                     PromotePawn(promotionType);
-                    SetGameState(PLAY);
                     return;
                 }
+            }
+        }
+        return;
+    }
+
+    if (GetGameState() == GAME_OVER) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            Vector2 mousePos = GetMousePosition();
+            
+            int centerX = GetScreenWidth() / 2;
+            int startY = GetScreenHeight() / 3;
+            const int BUTTON_PADDING = 20;
+            const int BUTTON_HEIGHT = 50;
+            
+            const char* exitText = "Exit";
+            const char* playAgainText = "Play Again";
+            
+            int exitWidth = MeasureText(exitText, 30) + BUTTON_PADDING * 2;
+            int playAgainWidth = MeasureText(playAgainText, 30) + BUTTON_PADDING * 2;
+            
+            int totalWidth = exitWidth + playAgainWidth + 50;
+            int startX = centerX - totalWidth / 2;
+            int buttonY = startY + 8 * 40;
+
+            Rectangle exitButton = {
+                (float)startX,
+                (float)buttonY,
+                (float)exitWidth,
+                (float)BUTTON_HEIGHT
+            };
+            
+            Rectangle playAgainButton = {
+                (float)(startX + exitWidth + 50),
+                (float)buttonY,
+                (float)playAgainWidth,
+                (float)BUTTON_HEIGHT
+            };
+
+            if (CheckCollisionPointRec(mousePos, exitButton)) {
+                shouldClose = true;
+            } else if (CheckCollisionPointRec(mousePos, playAgainButton)) {
+                isWhiteTurn = true;
+                boardRotated = false;
+                namesRotated = false;
+                selectedPiece = nullptr;
+                validMoves.clear();
+                
+                whiteTeam.Reset();
+                blackTeam.Reset();
+                
+                whiteCapturedPieces.clear();
+                blackCapturedPieces.clear();
+                
+                memset(whitePlayerName, 0, sizeof(whitePlayerName));
+                memset(blackPlayerName, 0, sizeof(blackPlayerName));
+                whiteNameActive = false;
+                blackNameActive = false;
+                
+                SetGameState(MENU);
             }
         }
         return;
@@ -353,20 +483,41 @@ void Game::HandleInput() {
             Vector2 mousePos = GetMousePosition();
             Vector2 boardPos = ScreenToBoard(mousePos);
             
+            int boardPixelSize = TILE_SIZE * BOARD_SIZE;
+            int offsetX = (GetScreenWidth() - boardPixelSize) / 2;
+            int offsetY = (GetScreenHeight() - boardPixelSize) / 2;
+            
+            const int RESIGN_BUTTON_WIDTH = 100;
+            const int RESIGN_BUTTON_HEIGHT = 40;
+            const int RESIGN_BUTTON_MARGIN = 20;
+            const int LABEL_MARGIN = 8;
+            const int LABEL_SIZE = 20;
+            
+            Rectangle resignButton = {
+                (float)(offsetX + boardPixelSize - RESIGN_BUTTON_WIDTH),
+                (float)(offsetY + boardPixelSize + LABEL_MARGIN + LABEL_SIZE + RESIGN_BUTTON_MARGIN),
+                (float)RESIGN_BUTTON_WIDTH,
+                (float)RESIGN_BUTTON_HEIGHT
+            };
+            
+            if (CheckCollisionPointRec(mousePos, resignButton)) {
+                if (gameOverSound.stream.buffer != NULL) {
+                    PlaySound(gameOverSound);
+                }
+                SetGameState(GAME_OVER);
+                return;
+            }
+            
             if (boardPos.x >= 0 && boardPos.x < BOARD_SIZE &&
                 boardPos.y >= 0 && boardPos.y < BOARD_SIZE) {
                 
-                // Get the clicked piece
                 Piece* clickedPiece = const_cast<Piece*>(GetPieceAt(boardPos.x, boardPos.y));
                 
                 if (selectedPiece) {
-                    // If clicking a piece of the current player's color
                     if (clickedPiece && clickedPiece->IsWhite() == isWhiteTurn) {
-                        // Select the new piece
                         selectedPiece = clickedPiece;
                         validMoves = GetValidMoves(selectedPiece);
                     } else {
-                        // Try to move to the clicked square
                         bool isValidMove = false;
                         for (const auto& move : validMoves) {
                             if (move.x == boardPos.x && move.y == boardPos.y) {
@@ -377,14 +528,28 @@ void Game::HandleInput() {
                         
                         if (isValidMove) {
                             MovePiece(boardPos.x, boardPos.y);
+                            
+                            if (IsCheckmate(isWhiteTurn)) {
+                                namesRotated = !namesRotated;
+                                boardRotated = !boardRotated;
+                                if (checkmateSound.stream.buffer != NULL) {
+                                    PlaySound(checkmateSound);
+                                }
+                                SetGameState(GAME_OVER);
+                            } else if (IsStalemate(isWhiteTurn)) {
+                                namesRotated = !namesRotated;
+                                boardRotated = !boardRotated;
+                                if (stalemateSound.stream.buffer != NULL) {
+                                    PlaySound(stalemateSound);
+                                }
+                                SetGameState(GAME_OVER);
+                            }
                         } else {
-                            // Deselect if clicking an invalid move
                             selectedPiece = nullptr;
                             validMoves.clear();
                         }
                     }
                 } else if (clickedPiece && clickedPiece->IsWhite() == isWhiteTurn) {
-                    // Select new piece if it's the current player's turn
                     selectedPiece = clickedPiece;
                     validMoves = GetValidMoves(selectedPiece);
                 }
@@ -396,7 +561,6 @@ void Game::HandleInput() {
 void Game::MovePiece(int x, int y) {
     if (!selectedPiece) return;
 
-    // Check if the move is valid
     Vector2 targetPos = {(float)x, (float)y};
     bool isValidMove = false;
     for (const auto& move : validMoves) {
@@ -407,18 +571,17 @@ void Game::MovePiece(int x, int y) {
     }
 
     if (isValidMove) {
-        // Check for en passant
         if (selectedPiece->GetType() == PieceType::PAWN &&
             abs(lastMove.end.y - lastMove.start.y) == 2 &&
             lastMove.piece->GetType() == PieceType::PAWN &&
             lastMove.end.x == x &&
-            lastMove.end.y == selectedPiece->GetY() &&  // Check if enemy pawn is on same rank
-            abs(x - selectedPiece->GetX()) == 1 &&      // Check if moving diagonally
-            y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) {  // Check if moving to correct square behind enemy pawn
+            lastMove.end.y == selectedPiece->GetY() &&
+            abs(x - selectedPiece->GetX()) == 1 &&
+            y == lastMove.end.y + (selectedPiece->IsWhite() ? -1 : 1)) {
 
-            // En passant capture
             Piece* capturedPawn = const_cast<Piece*>(GetPieceAt(x, lastMove.end.y));
             if (capturedPawn) {
+                AddCapturedPiece(capturedPawn->GetType(), capturedPawn->IsWhite());
                 if (capturedPawn->IsWhite()) {
                     whiteTeam.RemovePieceAt(x, lastMove.end.y);
                 } else {
@@ -426,56 +589,45 @@ void Game::MovePiece(int x, int y) {
                 }
             }
 
-            // Play capture sound for en passant
             if (captureSound.stream.buffer != NULL) {
                 PlaySound(captureSound);
             }
         }
 
-        // Remove the captured piece if present
         Piece* targetPiece = const_cast<Piece*>(GetPieceAt(x, y));
         if (targetPiece && targetPiece->IsWhite() != selectedPiece->IsWhite()) {
             if (targetPiece->GetType() == PieceType::KING) {
-                // Cannot capture the king, invalidate the move
                 return;
             }
+            AddCapturedPiece(targetPiece->GetType(), targetPiece->IsWhite());
             if (targetPiece->IsWhite()) {
                 whiteTeam.RemovePieceAt(x, y);
             } else {
                 blackTeam.RemovePieceAt(x, y);
             }
-            // Play capture sound
             if (captureSound.stream.buffer != NULL) {
                 PlaySound(captureSound);
             }
-        } else {
-            // Play move sound
-            if (moveSound.stream.buffer != NULL) {
-                PlaySound(moveSound);
-            }
         }
 
-        // Update last move
         lastMove = {selectedPiece->GetPosition(), targetPos, selectedPiece};
 
         selectedPiece->SetPosition(x, y);
 
-        // Check for pawn promotion
         if (selectedPiece->GetType() == PieceType::PAWN) {
             int promotionRank = selectedPiece->IsWhite() ? 0 : 7;
             if (y == promotionRank) {
                 promotionSquare = {(float)x, (float)y};
                 SetGameState(PROMOTION);
-                // Don't switch turns yet - wait for promotion to complete
-                // Play promotion sound
-                if (promotionSound.stream.buffer != NULL) {
-                    PlaySound(promotionSound);
-                }
                 return;
             }
         }
 
-        // Check if this move puts the opponent's king in check
+        if ((!targetPiece || targetPiece->IsWhite() == selectedPiece->IsWhite()) &&
+            moveSound.stream.buffer != NULL) {
+            PlaySound(moveSound);
+        }
+
         const Team& opposingTeam = isWhiteTurn ? blackTeam : whiteTeam;
         const Piece* opposingKing = nullptr;
         for (const auto& piece : opposingTeam.GetPieces()) {
@@ -486,116 +638,235 @@ void Game::MovePiece(int x, int y) {
         }
         
         if (opposingKing && IsSquareUnderAttack(opposingKing->GetX(), opposingKing->GetY(), isWhiteTurn)) {
-            // Play check sound
-            if (checkSound.stream.buffer != NULL) {
+             if (IsCheckmate(!isWhiteTurn) || IsStalemate(!isWhiteTurn)) {
+
+             }
+            else if (checkSound.stream.buffer != NULL) {
                 PlaySound(checkSound);
             }
         }
 
-        // Only switch turns if not promoting
         if (GetGameState() != PROMOTION) {
             isWhiteTurn = !isWhiteTurn;
             boardRotated = !boardRotated;
+            namesRotated = !namesRotated;
         }
     }
 
-    // Clear selection
     selectedPiece = nullptr;
     validMoves.clear();
 }
 
 void Game::PromotePawn(PieceType type) {
-    // Create new piece at promotion square
     Team& team = isWhiteTurn ? whiteTeam : blackTeam;
     team.RemovePieceAt(promotionSquare.x, promotionSquare.y);
     team.AddPiece(type, promotionSquare.x, promotionSquare.y);
 
-    // Play move sound
-    if (moveSound.stream.buffer != NULL) {
-        PlaySound(moveSound);
+    if (promotionSound.stream.buffer != NULL) {
+        PlaySound(promotionSound);
     }
 
-    // Clear any selected piece and valid moves
     selectedPiece = nullptr;
     validMoves.clear();
 
-    // Switch turns and rotate board after promotion is complete
     isWhiteTurn = !isWhiteTurn;
     boardRotated = !boardRotated;
+    namesRotated = !namesRotated;
     
-    // Reset promotion square and state
-    promotionSquare = {-1, -1};
-    SetGameState(PLAY);
+    if (IsCheckmate(isWhiteTurn)) {
+        boardRotated = !boardRotated;
+        namesRotated = !namesRotated;
+        if (checkmateSound.stream.buffer != NULL) {
+                    PlaySound(checkmateSound);
+        }
+        SetGameState(GAME_OVER);
+    } else if (IsStalemate(isWhiteTurn)) {
+        boardRotated = !boardRotated;
+        namesRotated = !namesRotated;
+        if (stalemateSound.stream.buffer != NULL) {
+                    PlaySound(stalemateSound);
+        }
+        SetGameState(GAME_OVER);
+    } else {
+        SetGameState(PLAY);
+    }
+        promotionSquare = {-1, -1};
 }
 
 void Game::DrawPromotionUI() {
-    // Draw semi-transparent background
     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Color{0, 0, 0, 200});
 
-    // Get texture manager instance
     auto texManager = TextureManager::GetInstance();
     
-    // The pawn being promoted belongs to the current player
     bool isWhitePiece = isWhiteTurn;
 
-    // Calculate board position
     int boardPixelSize = TILE_SIZE * BOARD_SIZE;
     int offsetX = (GetScreenWidth() - boardPixelSize) / 2;
     int offsetY = (GetScreenHeight() - boardPixelSize) / 2;
 
-    // Draw promotion pieces
-    const std::vector<std::string> pieceTypes = {"queen", "rook", "bishop", "knight"};
+    const  vector< string> pieceTypes = {"queen", "rook", "bishop", "knight"};
     float spacing = 100.0f;
     float startX = offsetX + (boardPixelSize - spacing * pieceTypes.size()) / 2;
-    float y = offsetY + (boardPixelSize - 64) / 2;  // 64 is piece texture size
+    float y = offsetY + (boardPixelSize - 64) / 2;
 
     for (size_t i = 0; i < pieceTypes.size(); i++) {
         Vector2 piecePos = {startX + i * spacing, y};
-        std::string prefix = isWhitePiece ? "white_" : "black_";
+         string prefix = isWhitePiece ? "white_" : "black_";
         Texture2D texture = texManager->GetTexture(prefix + pieceTypes[i]);
         
-        DrawTexture(texture, piecePos.x, piecePos.y, WHITE);  // Always use WHITE tint to preserve piece color
+        DrawTexture(texture, piecePos.x, piecePos.y, WHITE);
     }
 }
 
 void Game::DrawLabels() {
-    // Get window dimensions for centering
     int windowWidth = GetScreenWidth();
     int windowHeight = GetScreenHeight();
     
-    // Calculate board offset
     int boardPixelSize = TILE_SIZE * BOARD_SIZE;
     int offsetX = (windowWidth - boardPixelSize) / 2;
     int offsetY = (windowHeight - boardPixelSize) / 2;
 
-    // Constants for label styling
-    const int LABEL_SIZE = 14;  // Smaller font size for better visibility
-    const int LABEL_MARGIN = 5;
-    const Color LABEL_COLOR = GREEN;
+    const int LABEL_SIZE = 20;
+    const int LABEL_MARGIN = 8;
+    const Color LABEL_COLOR = RAYWHITE;
+    const Color SHADOW_COLOR = BLACK;
+    const int SHADOW_OFFSET = 1;
+    const int PROFILE_SIZE = 32;
+    const int NAME_MARGIN = 12;
+    const int PLAYER_NAME_SIZE = 24;
+    const int VERTICAL_PADDING = 20;
 
-    // Draw vertical labels (1 to 8)
+    const int CAPTURED_PIECE_SIZE = 30;
+    const int CAPTURED_PIECE_SPACING = 15;
+    const int CAPTURED_HEADER_SIZE = 25;
+    const int CAPTURED_SECTION_MARGIN = 40;
+    const int CAPTURED_HEADER_VERTICAL_OFFSET = 50;
+    const int CAPTURED_SECTION_WIDTH = 200;
+    const int CAPTURED_LINE_SPACING = 40;
+
+    if (GetGameState() == PLAY) {
+        auto texManager = TextureManager::GetInstance();
+
+        int leftSectionX = (windowWidth - boardPixelSize) / 4 - CAPTURED_SECTION_WIDTH / 2;
+        int rightSectionX = windowWidth - (windowWidth - boardPixelSize) / 4 - CAPTURED_SECTION_WIDTH / 2;
+        int capturedY = offsetY + boardPixelSize / 2;
+
+        auto drawCapturedPieces = [&](const  vector<PieceType>& pieces, int startX, int startY, bool isWhite) {
+            int currentX = startX;
+            int currentY = startY;
+            int piecesInFirstLine = 0;
+            int maxPiecesInLine = CAPTURED_SECTION_WIDTH / (CAPTURED_PIECE_SIZE + CAPTURED_PIECE_SPACING);
+
+            for (const auto& pieceType : pieces) {
+                 string pieceName;
+                switch (pieceType) {
+                    case PieceType::PAWN: pieceName = isWhite ? "white_pawn" : "black_pawn"; break;
+                    case PieceType::ROOK: pieceName = isWhite ? "white_rook" : "black_rook"; break;
+                    case PieceType::KNIGHT: pieceName = isWhite ? "white_knight" : "black_knight"; break;
+                    case PieceType::BISHOP: pieceName = isWhite ? "white_bishop" : "black_bishop"; break;
+                    case PieceType::QUEEN: pieceName = isWhite ? "white_queen" : "black_queen"; break;
+                    case PieceType::KING: pieceName = isWhite ? "white_king" : "black_king"; break;
+                }
+                Texture2D texture = texManager->GetTexture(pieceName);
+                DrawTexture(texture, currentX, currentY, WHITE);
+                
+                piecesInFirstLine++;
+                if (piecesInFirstLine >= maxPiecesInLine) {
+                    currentX = startX;
+                    currentY += CAPTURED_PIECE_SIZE + CAPTURED_LINE_SPACING;
+                    piecesInFirstLine = 0;
+                } else {
+                    currentX += (CAPTURED_PIECE_SIZE + CAPTURED_PIECE_SPACING);
+                }
+            }
+        };
+
+        if (this->isWhiteTurn) {
+            const char* blackHeader = "Black's Captures";
+            int blackHeaderWidth = MeasureText(blackHeader, CAPTURED_HEADER_SIZE);
+            DrawText(blackHeader,
+                rightSectionX + CAPTURED_SECTION_WIDTH / 2 - blackHeaderWidth / 2,
+                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
+                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+
+            drawCapturedPieces(blackCapturedPieces, rightSectionX, capturedY, false);
+
+            const char* whiteHeader = "White's Captures";
+            int whiteHeaderWidth = MeasureText(whiteHeader, CAPTURED_HEADER_SIZE);
+            DrawText(whiteHeader,
+                leftSectionX + CAPTURED_SECTION_WIDTH / 2 - whiteHeaderWidth / 2,
+                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
+                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+
+            drawCapturedPieces(whiteCapturedPieces, leftSectionX, capturedY, true);
+        } else {
+            const char* whiteHeader = "White's Captures";
+            int whiteHeaderWidth = MeasureText(whiteHeader, CAPTURED_HEADER_SIZE);
+            DrawText(whiteHeader,
+                rightSectionX + CAPTURED_SECTION_WIDTH / 2 - whiteHeaderWidth / 2,
+                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
+                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+
+            drawCapturedPieces(whiteCapturedPieces, rightSectionX, capturedY, true);
+
+            const char* blackHeader = "Black's Captures";
+            int blackHeaderWidth = MeasureText(blackHeader, CAPTURED_HEADER_SIZE);
+            DrawText(blackHeader,
+                leftSectionX + CAPTURED_SECTION_WIDTH / 2 - blackHeaderWidth / 2,
+                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
+                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+
+            drawCapturedPieces(blackCapturedPieces, leftSectionX, capturedY, false);
+        }
+    }
+
+    const char* activePlayerName = namesRotated ? blackPlayerName : whitePlayerName;
+    const char* inactivePlayerName = namesRotated ? whitePlayerName : blackPlayerName;
+
+    int activeProfileY = offsetY + boardPixelSize + LABEL_MARGIN + LABEL_SIZE + VERTICAL_PADDING;
+    Rectangle sourceRec = { 0, 0, (float)profileTexture.width, (float)profileTexture.height };
+    Rectangle destRec = { (float)offsetX, (float)activeProfileY, (float)PROFILE_SIZE, (float)PROFILE_SIZE };
+    DrawTexturePro(profileTexture, sourceRec, destRec, {0, 0}, 0.0f, WHITE);
+    DrawText(activePlayerName, offsetX + PROFILE_SIZE + NAME_MARGIN, activeProfileY + (PROFILE_SIZE - PLAYER_NAME_SIZE) / 2, PLAYER_NAME_SIZE, LABEL_COLOR);
+
+    int inactiveProfileY = offsetY - PROFILE_SIZE - LABEL_MARGIN - VERTICAL_PADDING;
+    destRec = { (float)offsetX, (float)inactiveProfileY, (float)PROFILE_SIZE, (float)PROFILE_SIZE };
+    DrawTexturePro(profileTexture, sourceRec, destRec, {0, 0}, 0.0f, WHITE);
+    DrawText(inactivePlayerName, offsetX + PROFILE_SIZE + NAME_MARGIN, inactiveProfileY + (PROFILE_SIZE - PLAYER_NAME_SIZE) / 2, PLAYER_NAME_SIZE, LABEL_COLOR);
+
     for (int y = 0; y < BOARD_SIZE; y++) {
-        // Keep the actual square notation (1-8 from bottom to top)
-        char rankLabel = boardRotated ? ('1' + (BOARD_SIZE - 1 - y)) : ('1' + y);
+        int actualY = boardRotated ? y : (BOARD_SIZE - 1 - y);
+        char rankLabel = '1' + actualY;
         char label[2] = {rankLabel, '\0'};
         
-        // Draw numbers outside the board area
         DrawText(
             label,
-            offsetX - LABEL_SIZE - LABEL_MARGIN * 3,  // Moved further left
+            offsetX - LABEL_SIZE - LABEL_MARGIN * 3 + SHADOW_OFFSET,
+            offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET,
+            LABEL_SIZE,
+            SHADOW_COLOR
+        );
+        DrawText(
+            label,
+            offsetX - LABEL_SIZE - LABEL_MARGIN * 3,
             offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
             LABEL_SIZE,
             LABEL_COLOR
         );
     }
 
-    // Draw horizontal labels (a to h)
     for (int x = 0; x < BOARD_SIZE; x++) {
-        // Use lowercase letters (a-h from left to right)
-        char colLabel = 'a' + x;  
+        int actualX = boardRotated ? (BOARD_SIZE - 1 - x) : x;
+        char colLabel = 'a' + actualX;
         char label[2] = {colLabel, '\0'};
         
-        // Draw letters in fixed positions regardless of rotation
+        DrawText(
+            label,
+            offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET,
+            offsetY + boardPixelSize + LABEL_MARGIN + SHADOW_OFFSET,
+            LABEL_SIZE,
+            SHADOW_COLOR
+        );
         DrawText(
             label,
             offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
@@ -604,24 +875,56 @@ void Game::DrawLabels() {
             LABEL_COLOR
         );
     }
+
+    if (GetGameState() == PLAY) {
+        const char* resignText = "Resign";
+        const int RESIGN_BUTTON_WIDTH = 100;
+        const int RESIGN_BUTTON_HEIGHT = 40;
+        const int RESIGN_BUTTON_MARGIN = 20;
+        const int RESIGN_TEXT_SIZE = 20;
+        
+        int textWidth = MeasureText(resignText, RESIGN_TEXT_SIZE);
+        
+        int resignX = offsetX + boardPixelSize - RESIGN_BUTTON_WIDTH;
+        int resignY = offsetY + boardPixelSize + LABEL_MARGIN + LABEL_SIZE + RESIGN_BUTTON_MARGIN;
+        
+        Rectangle resignButton = {
+            (float)resignX,
+            (float)resignY,
+            (float)RESIGN_BUTTON_WIDTH,
+            (float)RESIGN_BUTTON_HEIGHT
+        };
+
+        Rectangle hoverButton = {
+            (float)(resignX - 3),
+            (float)(resignY - 17),
+            (float)(RESIGN_BUTTON_WIDTH + 5),
+            (float)(RESIGN_BUTTON_HEIGHT + 5)
+        };
+        
+        Vector2 mousePos = GetMousePosition();
+        Color buttonColor = CheckCollisionPointRec(mousePos, hoverButton) ? LIGHTGRAY : RAYWHITE;
+        DrawRectangleRec(resignButton, buttonColor);
+        
+        DrawText(resignText,
+            resignX + (RESIGN_BUTTON_WIDTH - textWidth) / 2,
+            resignY + (RESIGN_BUTTON_HEIGHT - RESIGN_TEXT_SIZE) / 2,
+            RESIGN_TEXT_SIZE, BLACK);
+    }
 }
 
 void Game::DrawBoard() {
-    // Get window dimensions for centering
     int windowWidth = GetScreenWidth();
     int windowHeight = GetScreenHeight();
     
-    // Calculate board offset
     int boardPixelSize = TILE_SIZE * BOARD_SIZE;
     int offsetX = (windowWidth - boardPixelSize) / 2;
     int offsetY = (windowHeight - boardPixelSize) / 2;
 
-    // Draw background to cover entire screen
     Rectangle sourceRect = { 0, 0, (float)backgroundTexture.width, (float)backgroundTexture.height };
     Rectangle destRect = { 0, 0, (float)windowWidth, (float)windowHeight };
     DrawTexturePro(backgroundTexture, sourceRect, destRect, {0, 0}, 0.0f, WHITE);
 
-    // Draw the chess board squares
     for (int y = 0; y < BOARD_SIZE; y++) {
         for (int x = 0; x < BOARD_SIZE; x++) {
             int drawX = boardRotated ? BOARD_SIZE - 1 - x : x;
@@ -634,52 +937,15 @@ void Game::DrawBoard() {
                 TILE_SIZE,
                 squareColor
             );
-
-            // Draw vertical labels (1 to 8) at the left edge of first column
-            if (boardRotated ? x == BOARD_SIZE - 1 : x == 0) {
-                char rowLabel = boardRotated ? ('8' - y) : ('1' + y);
-                char label[2] = {rowLabel, '\0'};
-                
-                // Draw numbers outside the board area
-                DrawText(
-                    label,
-                    offsetX + drawX * TILE_SIZE + 2,  // Small margin from edge
-                    offsetY + drawY * TILE_SIZE + 2,  // Small margin from top
-                    14,  // Smaller font size
-                    GREEN
-                );
-            }
         }
     }
 
-    // Draw horizontal labels (a to h)
-    const int LABEL_SIZE = 20;
-    const int LABEL_MARGIN = 5;
-    const Color LABEL_COLOR = GREEN;
-
-    for (int x = 0; x < BOARD_SIZE; x++) {
-        int drawX = boardRotated ? BOARD_SIZE - 1 - x : x;
-        char colLabel = boardRotated ? ('h' - x) : ('a' + x);  
-        char label[2] = {colLabel, '\0'};
-        
-        // Draw below the board
-        DrawText(
-            label,
-            offsetX + drawX * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
-            offsetY + boardPixelSize + LABEL_MARGIN,
-            LABEL_SIZE,
-            LABEL_COLOR
-        );
-    }
-    
-    // Draw pieces
     for (const auto& piece : whiteTeam.GetPieces()) {
         Vector2 pos = GetCenteredPiecePosition(*piece);
         Texture2D tex = piece->GetTexture();
-        if (tex.id > 0) {  // Only draw if texture is valid
+        if (tex.id > 0) {
             DrawTexture(tex, pos.x, pos.y, WHITE);
         } else {
-            // Draw a placeholder if texture is missing
             DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, WHITE);
         }
     }
@@ -687,77 +953,97 @@ void Game::DrawBoard() {
     for (const auto& piece : blackTeam.GetPieces()) {
         Vector2 pos = GetCenteredPiecePosition(*piece);
         Texture2D tex = piece->GetTexture();
-        if (tex.id > 0) {  // Only draw if texture is valid
+        if (tex.id > 0) {
             DrawTexture(tex, pos.x, pos.y, WHITE);
         } else {
-            // Draw a placeholder if texture is missing
             DrawRectangle(pos.x, pos.y, TILE_SIZE/2, TILE_SIZE/2, BLACK);
         }
     }
 }
 
 void Game::DrawMenu() {
-    // Draw background
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), DARKGRAY);
+    DrawTexturePro(
+        menuBackgroundTexture,
+        Rectangle{0, 0, (float)menuBackgroundTexture.width, (float)menuBackgroundTexture.height},
+        Rectangle{0, 0, (float)GetScreenWidth(), (float)GetScreenHeight()},
+        Vector2{0, 0},
+        0.0f,
+        WHITE
+    );
 
-    const char* title = "Chess Game";
-    const char* developers = "Developed by: Shehryar, Sufyan & Faizan";
+    const char* title = "Chess++";
+    const char* developers = "Developers: Shehryar [24K-0569], Sufyan [24K-0806], Faizan [24K-0571]";
     const char* playText = "Play";
 
-    int titleWidth = MeasureText(title, 40);
-    int devWidth = MeasureText(developers, 20);
-    int playWidth = MeasureText(playText, 30);
+    int titleWidth = MeasureText(title, 60);
+    int devWidth = MeasureText(developers, 35);
+    int playWidth = MeasureText(playText, 40);
 
-    // Draw title
-    DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 3, 40, RAYWHITE);
+    DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 8, 60, RAYWHITE);
 
-    // Draw Play button
-    int buttonWidth = playWidth + 60;  // Add padding
-    int buttonHeight = 40;
+    DrawText(developers, 
+        (GetScreenWidth() - devWidth) / 2,
+        GetScreenHeight() / 6 + 60,
+        35,
+        RAYWHITE
+    );
+
+    int inputWidth = 400;
+    int inputHeight = 50;
+    int inputX = (GetScreenWidth() - inputWidth) / 2;
+    int inputY = GetScreenHeight() / 3 + 50;
+
+    DrawText("White Player Name:", inputX, inputY - 40, 25, RAYWHITE);
+    DrawRectangle(inputX, inputY, inputWidth, inputHeight, whiteNameActive ? LIGHTGRAY : RAYWHITE);
+    DrawText(whitePlayerName, inputX + 15, inputY + 12, 25, BLACK);
+
+    DrawText("Black Player Name:", inputX, inputY + 80 + 20, 25, RAYWHITE);
+    DrawRectangle(inputX, inputY + 120 + 20, inputWidth, inputHeight, blackNameActive ? LIGHTGRAY : RAYWHITE);
+    DrawText(blackPlayerName, inputX + 15, inputY + 135 + 20 - 3, 25, BLACK);
+
+    int buttonWidth = playWidth + 100;
+    int buttonHeight = 60;
     int buttonX = (GetScreenWidth() - buttonWidth) / 2;
-    int buttonY = GetScreenHeight() / 2;
+    int buttonY = GetScreenHeight() / 2 + 50 + 40 + 40;
     
-    // Draw button background with hover effect
     Vector2 mousePos = GetMousePosition();
     Color buttonColor = RAYWHITE;
     if (mousePos.x >= buttonX && mousePos.x <= buttonX + buttonWidth &&
-        mousePos.y >= buttonY && mousePos.y <= buttonY + buttonHeight) {
-        buttonColor = LIGHTGRAY;  // Change color on hover
+        mousePos.y >= buttonY - (14) && mousePos.y <= buttonY - (14) + buttonHeight) {
+        buttonColor = LIGHTGRAY;
     }
     DrawRectangle(buttonX, buttonY, buttonWidth, buttonHeight, buttonColor);
     
-    // Draw button text
     DrawText(playText, 
         buttonX + (buttonWidth - playWidth) / 2,
-        buttonY + (buttonHeight - 30) / 2,  // 30 is font size
-        30, 
+        buttonY + (buttonHeight - 40) / 2,
+        40, 
         BLACK
     );
 
-    // Draw developers credit
-    DrawText(developers, 
-        (GetScreenWidth() - devWidth) / 2,
-        GetScreenHeight() - 50,
-        20,
-        LIGHTGRAY
-    );
+    if (strlen(whitePlayerName) == 0 || strlen(blackPlayerName) == 0) {
+        const char* errorMsg = "Please enter names for both players";
+        int errorWidth = MeasureText(errorMsg, 25);
+        DrawText(errorMsg, 
+            (GetScreenWidth() - errorWidth) / 2,
+            buttonY + buttonHeight + 20 + 40,
+            25,
+            RED
+        );
+    }
 }
 
 Vector2 Game::ScreenToBoard(Vector2 screenPos) {
-    // Calculate board offset
     int boardPixelSize = TILE_SIZE * BOARD_SIZE;
     int offsetX = (GetScreenWidth() - boardPixelSize) / 2;
     int offsetY = (GetScreenHeight() - boardPixelSize) / 2;
 
-    // Adjust screen position by offset
     float relativeX = screenPos.x - offsetX;
     float relativeY = screenPos.y - offsetY;
 
-    // Convert to board coordinates
     int boardX = (int)(relativeX / TILE_SIZE);
     int boardY = (int)(relativeY / TILE_SIZE);
 
-    // Handle board rotation
     if (boardRotated) {
         boardX = BOARD_SIZE - 1 - boardX;
         boardY = BOARD_SIZE - 1 - boardY;
@@ -767,16 +1053,13 @@ Vector2 Game::ScreenToBoard(Vector2 screenPos) {
 }
 
 Vector2 Game::BoardToScreen(int x, int y) {
-    // Get window dimensions for centering
     int windowWidth = GetScreenWidth();
     int windowHeight = GetScreenHeight();
     
-    // Calculate board offset
     int boardPixelSize = TILE_SIZE * BOARD_SIZE;
     int offsetX = (windowWidth - boardPixelSize) / 2;
     int offsetY = (windowHeight - boardPixelSize) / 2;
 
-    // Handle board rotation
     if (boardRotated) {
         x = BOARD_SIZE - 1 - x;
         y = BOARD_SIZE - 1 - y;
@@ -789,10 +1072,8 @@ Vector2 Game::BoardToScreen(int x, int y) {
 }
 
 Vector2 Game::GetCenteredPiecePosition(const Piece& piece) {
-    // Get the base board position with proper offset
     Vector2 boardPos = BoardToScreen(piece.GetX(), piece.GetY());
 
-    // Center the piece within its tile
     return (Vector2){
         boardPos.x + (TILE_SIZE - piece.GetTexture().width) / 2,
         boardPos.y + (TILE_SIZE - piece.GetTexture().height) / 2
@@ -808,11 +1089,9 @@ const Team& Game::GetBlackTeam() const {
 }
 
 void Game::SelectPiece(int x, int y) {
-    // Clear previous selection
     selectedPiece = nullptr;
     validMoves.clear();
 
-    // Get piece at the clicked position
     const Piece* piece = GetPieceAt(x, y);
     if (piece && piece->IsWhite() == isWhiteTurn) {
         selectedPiece = const_cast<Piece*>(piece);
@@ -823,17 +1102,13 @@ void Game::SelectPiece(int x, int y) {
 bool Game::IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePos) const {
     const Team& attackingTeam = byWhite ? whiteTeam : blackTeam;
     
-    // Check all pieces of the attacking team
     for (const auto& piece : attackingTeam.GetPieces()) {
-        // Skip if this is the piece position we're ignoring (for capture validation)
         if (piece->GetX() == ignorePiecePos.x && piece->GetY() == ignorePiecePos.y) {
             continue;
         }
         
-        // Get all possible moves for this piece
         auto moves = piece->GetValidMoves(*this);
         
-        // Check if any move can reach the target square
         for (const auto& move : moves) {
             if (move.x == x && move.y == y) {
                 return true;
@@ -843,13 +1118,12 @@ bool Game::IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePo
     return false;
 }
 
-std::vector<Vector2> Game::GetValidMoves(Piece* piece) {
+ vector<Vector2> Game::GetValidMoves(Piece* piece) {
     if (!piece) return {};
-    
-    std::vector<Vector2> moves = piece->GetValidMoves(*this);
-    std::vector<Vector2> legalMoves;
-    
-    // Find our king
+
+     vector<Vector2> moves = piece->GetValidMoves(*this);
+     vector<Vector2> legalMoves;
+
     const Team& ourTeam = piece->IsWhite() ? whiteTeam : blackTeam;
     const Piece* ourKing = nullptr;
     for (const auto& p : ourTeam.GetPieces()) {
@@ -858,56 +1132,49 @@ std::vector<Vector2> Game::GetValidMoves(Piece* piece) {
             break;
         }
     }
-    
-    if (!ourKing) return moves; // Should never happen in a valid game
-    
-    // Store original position
+
+    if (!ourKing) return moves;
+
     Vector2 originalPos = piece->GetPosition();
-    
-    // Test each move to see if it leaves our king in check
+
     for (const auto& move : moves) {
-        // Store piece at target position (if any)
-        const Piece* capturedPiece = GetPieceAt(move.x, move.y);
-        Vector2 capturedPos = {-1, -1};
-        
+        Piece* capturedPiece = const_cast<Piece*>(GetPieceAt(move.x, move.y));
+        bool wasCaptured = false;
+
         if (capturedPiece) {
-            capturedPos = {(float)capturedPiece->GetX(), (float)capturedPiece->GetY()};
+            wasCaptured = true;
+            capturedPiece->SetPosition(-1, -1);
         }
-        
-        // Make the move temporarily
+
         piece->SetPosition(move.x, move.y);
-        
-        // Check if our king is in check after the move
+
         bool kingInCheck;
         if (piece->GetType() == PieceType::KING) {
-            // If moving the king, check the new position
-            kingInCheck = IsSquareUnderAttack(move.x, move.y, !piece->IsWhite(), capturedPos);
+            kingInCheck = IsSquareUnderAttack(move.x, move.y, !piece->IsWhite(), Vector2{-1, -1});
         } else {
-            // For other pieces, check the king's current position
-            kingInCheck = IsSquareUnderAttack(ourKing->GetX(), ourKing->GetY(), !piece->IsWhite(), capturedPos);
+            kingInCheck = IsSquareUnderAttack(ourKing->GetX(), ourKing->GetY(), !piece->IsWhite(), originalPos);
         }
-        
-        // If the move doesn't leave/put our king in check, it's legal
+
+        piece->SetPosition(originalPos.x, originalPos.y);
+        if (wasCaptured) {
+            capturedPiece->SetPosition(move.x, move.y);
+        }
+
         if (!kingInCheck) {
             legalMoves.push_back(move);
         }
     }
-    
-    // Restore the original position
-    piece->SetPosition(originalPos.x, originalPos.y);
-    
+
     return legalMoves;
 }
 
 const Piece* Game::GetPieceAt(int x, int y) const {
-    // Check white team pieces
     for (const auto& piece : whiteTeam.GetPieces()) {
         if (piece->GetX() == x && piece->GetY() == y) {
             return piece.get();
         }
     }
     
-    // Check black team pieces
     for (const auto& piece : blackTeam.GetPieces()) {
         if (piece->GetX() == x && piece->GetY() == y) {
             return piece.get();
@@ -919,4 +1186,198 @@ const Piece* Game::GetPieceAt(int x, int y) const {
 
 void Game::ToggleBoardRotation() {
     boardRotated = !boardRotated;
+}
+
+bool Game::IsCheckmate(bool isWhite) {
+    const Team& team = isWhite ? whiteTeam : blackTeam;
+    
+    const Piece* king = nullptr;
+    for (const auto& piece : team.GetPieces()) {
+        if (piece->GetType() == PieceType::KING) {
+            king = piece.get();
+            break;
+        }
+    }
+    
+    if (!king) return false;
+    
+    if (!IsSquareUnderAttack(king->GetX(), king->GetY(), !isWhite)) {
+        return false;
+    }
+    
+    for (const auto& piece : team.GetPieces()) {
+        auto moves = GetValidMoves(const_cast<Piece*>(piece.get()));
+        if (!moves.empty()) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+bool Game::IsStalemate(bool isWhite) {
+    const Team& team = isWhite ? whiteTeam : blackTeam;
+    
+    const Piece* king = nullptr;
+    for (const auto& piece : team.GetPieces()) {
+        if (piece->GetType() == PieceType::KING) {
+            king = piece.get();
+            break;
+        }
+    }
+    
+    if (!king) return false;
+    
+    if (IsSquareUnderAttack(king->GetX(), king->GetY(), !isWhite)) {
+        return false;
+    }
+    
+    for (const auto& piece : team.GetPieces()) {
+        auto moves = GetValidMoves(const_cast<Piece*>(piece.get()));
+        if (!moves.empty()) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+void Game::DrawGameOverUI() {
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Color{0, 0, 0, 200});
+
+    bool isCheckmate = IsCheckmate(isWhiteTurn);
+    bool isStalemate = IsStalemate(isWhiteTurn);
+    bool isResignation = !isCheckmate && !isStalemate;
+
+    const int TITLE_SIZE = 60;
+    const int MESSAGE_SIZE = 35;
+    const int CONGRATS_SIZE = 30;
+    const Color TEXT_COLOR = RAYWHITE;
+    const int LINE_SPACING = 40;
+    const int BUTTON_PADDING = 20;
+    const int BUTTON_HEIGHT = 50;
+
+    int centerX = GetScreenWidth() / 2;
+    int startY = GetScreenHeight() / 3;
+
+    const char* title = "Game Over!";
+    int titleWidth = MeasureText(title, TITLE_SIZE);
+    DrawText(title, centerX - titleWidth / 2, startY, TITLE_SIZE, TEXT_COLOR);
+
+    if (isCheckmate) {
+        const char* winnerName = isWhiteTurn ? blackPlayerName : whitePlayerName;
+        const char* loserName = isWhiteTurn ? whitePlayerName : blackPlayerName;
+
+        char winnerMsg[100];
+        snprintf(winnerMsg, sizeof(winnerMsg), "%s Won!", winnerName);
+        int winnerWidth = MeasureText(winnerMsg, MESSAGE_SIZE);
+        DrawText(winnerMsg, centerX - winnerWidth / 2, startY + LINE_SPACING * 2, MESSAGE_SIZE, TEXT_COLOR);
+
+        const char* byMsg = "(By Checkmate)";
+        int byWidth = MeasureText(byMsg, MESSAGE_SIZE);
+        DrawText(byMsg, centerX - byWidth / 2, startY + LINE_SPACING * 4 - 27, MESSAGE_SIZE, TEXT_COLOR);
+
+        char congratsMsg[200];
+        snprintf(congratsMsg, sizeof(congratsMsg), "Congratulations %s!", winnerName);
+        int congratsWidth = MeasureText(congratsMsg, CONGRATS_SIZE);
+        DrawText(congratsMsg, centerX - congratsWidth / 2, startY + LINE_SPACING * 6, CONGRATS_SIZE, TEXT_COLOR);
+
+        char luckMsg[200];
+        snprintf(luckMsg, sizeof(luckMsg), "Better Luck next time %s", loserName);
+        int luckWidth = MeasureText(luckMsg, CONGRATS_SIZE);
+        DrawText(luckMsg, centerX - luckWidth / 2, startY + LINE_SPACING * 6 + 35, CONGRATS_SIZE, TEXT_COLOR);
+
+    } else if (isStalemate) {
+        const char* stalemateMsg = "Game Ended in a Draw!";
+        int stalemateWidth = MeasureText(stalemateMsg, MESSAGE_SIZE);
+        DrawText(stalemateMsg, centerX - stalemateWidth / 2, startY + LINE_SPACING * 2, MESSAGE_SIZE, TEXT_COLOR);
+
+        const char* byMsg = "(By Stalemate)";
+        int byWidth = MeasureText(byMsg, MESSAGE_SIZE);
+        DrawText(byMsg, centerX - byWidth / 2, startY + LINE_SPACING * 4 - 27, MESSAGE_SIZE, TEXT_COLOR);
+
+        char playersMsg[200];
+        snprintf(playersMsg, sizeof(playersMsg), "Well played %s and %s!", whitePlayerName, blackPlayerName);
+        int playersWidth = MeasureText(playersMsg, CONGRATS_SIZE);
+        DrawText(playersMsg, centerX - playersWidth / 2, startY + LINE_SPACING * 6, CONGRATS_SIZE, TEXT_COLOR);
+    } else if (isResignation) {
+        const char* winnerName = isWhiteTurn ? blackPlayerName : whitePlayerName;
+        const char* loserName = isWhiteTurn ? whitePlayerName : blackPlayerName;
+
+        char winnerMsg[100];
+        snprintf(winnerMsg, sizeof(winnerMsg), "%s Won!", winnerName);
+        int winnerWidth = MeasureText(winnerMsg, MESSAGE_SIZE);
+        DrawText(winnerMsg, centerX - winnerWidth / 2, startY + LINE_SPACING * 2, MESSAGE_SIZE, TEXT_COLOR);
+
+        const char* byMsg = "(By Resignation of Opponent)";
+        int byWidth = MeasureText(byMsg, MESSAGE_SIZE);
+        DrawText(byMsg, centerX - byWidth / 2, startY + LINE_SPACING * 4 - 27, MESSAGE_SIZE, TEXT_COLOR);
+
+        char congratsMsg[200];
+        snprintf(congratsMsg, sizeof(congratsMsg), "Congratulations %s!", winnerName);
+        int congratsWidth = MeasureText(congratsMsg, CONGRATS_SIZE);
+        DrawText(congratsMsg, centerX - congratsWidth / 2, startY + LINE_SPACING * 6, CONGRATS_SIZE, TEXT_COLOR);
+
+        char luckMsg[200];
+        snprintf(luckMsg, sizeof(luckMsg), "Do not give up like that next time %s!", loserName);
+        int luckWidth = MeasureText(luckMsg, CONGRATS_SIZE);
+        DrawText(luckMsg, centerX - luckWidth / 2, startY + LINE_SPACING * 6 + 35, CONGRATS_SIZE, TEXT_COLOR);
+    }
+
+    const char* exitText = "Exit";
+    const char* playAgainText = "Play Again";
+    
+    int exitWidth = MeasureText(exitText, 30) + BUTTON_PADDING * 2;
+    int playAgainWidth = MeasureText(playAgainText, 30) + BUTTON_PADDING * 2;
+    
+    int totalWidth = exitWidth + playAgainWidth + 50;
+    int startX = centerX - totalWidth / 2;
+    int buttonY = startY + LINE_SPACING * 8 + 20;
+
+    Rectangle exitButton = {
+        (float)startX,
+        (float)buttonY,
+        (float)exitWidth,
+        (float)BUTTON_HEIGHT
+    };
+    
+    Rectangle playAgainButton = {
+        (float)(startX + exitWidth + 50),
+        (float)buttonY,
+        (float)playAgainWidth,
+        (float)BUTTON_HEIGHT
+    };
+
+    Vector2 mousePos = GetMousePosition();
+    Color exitColor = CheckCollisionPointRec(mousePos, exitButton) ? LIGHTGRAY : RAYWHITE;
+    Color playAgainColor = CheckCollisionPointRec(mousePos, playAgainButton) ? LIGHTGRAY : RAYWHITE;
+
+    DrawRectangleRec(exitButton, exitColor);
+    DrawRectangleRec(playAgainButton, playAgainColor);
+
+    DrawText(exitText, 
+        exitButton.x + (exitButton.width - MeasureText(exitText, 30)) / 2,
+        exitButton.y + (exitButton.height - 30) / 2,
+        30, BLACK);
+
+    DrawText(playAgainText,
+        playAgainButton.x + (playAgainButton.width - MeasureText(playAgainText, 30)) / 2,
+        playAgainButton.y + (playAgainButton.height - 30) / 2,
+        30, BLACK);
+}
+
+void Game::AddCapturedPiece(PieceType type, bool isWhite) {
+    if (isWhite) {
+        whiteCapturedPieces.push_back(type);
+    } else {
+        blackCapturedPieces.push_back(type);
+    }
+}
+
+const  vector<PieceType>& Game::GetWhiteCapturedPieces() const {
+    return whiteCapturedPieces;
+}
+
+const  vector<PieceType>& Game::GetBlackCapturedPieces() const {
+    return blackCapturedPieces;
 }

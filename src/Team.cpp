@@ -10,7 +10,7 @@
 #include <cctype>
 #include <string>
 #include <iostream>
-
+using namespace std;
 Team::Team(bool isWhiteTeam) : isWhite(isWhiteTeam)
 {
     SetupPieces();
@@ -49,7 +49,7 @@ void Team::RemovePieceAt(int x, int y)
 
 void Team::SetupPieces()
 {
-    std::string color = isWhite ? "white" : "black";
+     string color = isWhite ? "white" : "black";
     auto *texManager = TextureManager::GetInstance();
 
     // Load all piece textures
@@ -58,25 +58,20 @@ void Team::SetupPieces()
 
     for (int i = 0; i < 6; i++)
     {
-        std::string key = color + "_" + pieceTypes[i];
-        std::string filepath = "assets/" + key + ".png";
-
-        // std::cout << "Loading texture: " << filepath << std::endl;
-
+         string key = color + "_" + pieceTypes[i];
+         string filepath = "assets/" + key + ".png";
         Texture2D texture = texManager->LoadTextureFromFile(key, filepath);
 
-        // Check if texture is valid before using it
         if (texture.id == 0) 
         {
-            std::cerr << "ERROR: Texture failed to load: " << filepath << std::endl;
+             cerr << "ERROR: Texture failed to load: " << filepath <<  endl;
         }
         else
         {
-            std::cout << "Successfully loaded: " << filepath << std::endl;
+             cout << "Successfully loaded: " << filepath <<  endl;
         }
     }
 
-    // Setup pieces with loaded textures
     if (isWhite)
     {
         for (int x = 0; x < 8; x++)
@@ -108,9 +103,9 @@ void Team::SetupPieces()
 void Team::AddPiece(int x, int y, char type)
 {
     auto *texManager = TextureManager::GetInstance();
-    std::string color = isWhite ? "white" : "black";
-    char upperType = std::toupper(type);
-    std::string texKey;
+     string color = isWhite ? "white" : "black";
+    char upperType =  toupper(type);
+     string texKey;
 
     switch (upperType)
     {
@@ -138,27 +133,27 @@ void Team::AddPiece(int x, int y, char type)
 
     Texture2D tex = texManager->GetTexture(texKey);
     if (tex.id == 0)
-        return; // Skip if texture not found
+        return; 
 
     switch (upperType)
     {
     case 'P':
-        pieces.push_back(std::make_unique<Pawn>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Pawn>(x, y, tex, isWhite));
         break;
     case 'R':
-        pieces.push_back(std::make_unique<Rook>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Rook>(x, y, tex, isWhite));
         break;
     case 'N':
-        pieces.push_back(std::make_unique<Knight>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Knight>(x, y, tex, isWhite));
         break;
     case 'B':
-        pieces.push_back(std::make_unique<Bishop>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Bishop>(x, y, tex, isWhite));
         break;
     case 'Q':
-        pieces.push_back(std::make_unique<Queen>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Queen>(x, y, tex, isWhite));
         break;
     case 'K':
-        pieces.push_back(std::make_unique<King>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<King>(x, y, tex, isWhite));
         break;
     }
 }
@@ -166,8 +161,8 @@ void Team::AddPiece(int x, int y, char type)
 void Team::AddPiece(PieceType type, int x, int y)
 {
     auto* texManager = TextureManager::GetInstance();
-    std::string color = isWhite ? "white" : "black";
-    std::string texKey;
+     string color = isWhite ? "white" : "black";
+     string texKey;
 
     switch (type)
     {
@@ -189,21 +184,27 @@ void Team::AddPiece(PieceType type, int x, int y)
 
     Texture2D tex = texManager->GetTexture(texKey);
     if (tex.id == 0)
-        return; // Skip if texture not found
+        return; 
 
     switch (type)
     {
     case PieceType::QUEEN:
-        pieces.push_back(std::make_unique<Queen>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Queen>(x, y, tex, isWhite));
         break;
     case PieceType::ROOK:
-        pieces.push_back(std::make_unique<Rook>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Rook>(x, y, tex, isWhite));
         break;
     case PieceType::BISHOP:
-        pieces.push_back(std::make_unique<Bishop>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Bishop>(x, y, tex, isWhite));
         break;
     case PieceType::KNIGHT:
-        pieces.push_back(std::make_unique<Knight>(x, y, tex, isWhite));
+        pieces.push_back( make_unique<Knight>(x, y, tex, isWhite));
         break;
     }
+}
+
+void Team::Reset() {
+    // Clear all pieces
+    pieces.clear();
+    Team::SetupPieces();
 }

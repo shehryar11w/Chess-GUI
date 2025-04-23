@@ -13,4 +13,4 @@ class Queen;
 class Rook;
 class Vector2;
 
-#endif // FORWARD_H 
+#endif 

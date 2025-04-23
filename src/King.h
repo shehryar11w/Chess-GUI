@@ -4,15 +4,15 @@
 
 #include "Piece.h"
 #include "Game.h"
-
+using namespace std;
 class King : public Piece {
 public:
     King(int xPos, int yPos, Texture2D tex, bool white) 
         : Piece(xPos, yPos, tex, white, PieceType::KING) {}
 
-    std::vector<Vector2> GetValidMoves(const Game& game) const override {
-        std::vector<Vector2> moves;
-        for (auto [dx, dy] : std::vector<std::pair<int, int>>{{0, 1}, {1, 1}, {1, 0}, {1, -1},
+    vector<Vector2> GetValidMoves(const Game& game) const override {
+        vector<Vector2> moves;
+        for (auto [dx, dy] : vector<pair<int, int>>{{0, 1}, {1, 1}, {1, 0}, {1, -1},
                                                               {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}}) {
             int newX = x + dx;
             int newY = y + dy;
@@ -23,7 +23,6 @@ public:
                 }
             }
         }
-        // TODO: Add castling logic here if desired
         return moves;
     }
 };

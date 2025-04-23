@@ -4,11 +4,9 @@
 #include "raylib.h"
 #include "Forward.h"
 #include <vector>
-
-// Forward declarations
+using namespace std;
 class Game;
 
-// Define PieceType enum
 enum class PieceType {
     PAWN,
     ROOK,
@@ -20,26 +18,21 @@ enum class PieceType {
 
 class Piece {
 protected:
-    int x, y;                // Position on the board
-    Texture2D texture;       // Visual representation
-    bool isWhite;            // Color of the piece
-    PieceType type;          // Type of the piece
+    int x, y;             
+    Texture2D texture;      
+    bool isWhite;            
+    PieceType type;         
 
 public:
     Piece(int xPos, int yPos, Texture2D tex, bool white, PieceType pieceType) 
         : x(xPos), y(yPos), isWhite(white), type(pieceType) {
-        texture = tex;  // Texture is managed by Team class
+        texture = tex;  
     }
     
     virtual ~Piece() {
-        // Do not unload texture here - it's managed by Team class
         texture.id = 0;
     }
-
-    // Pure virtual function for valid moves - implementation in derived classes
-    virtual std::vector<Vector2> GetValidMoves(const Game& game) const = 0;
-
-    // Getters
+    virtual  vector<Vector2> GetValidMoves(const Game& game) const = 0;
     int GetX() const { return x; }
     int GetY() const { return y; }
     const Texture2D& GetTexture() const { return texture; }
@@ -47,7 +40,7 @@ public:
     PieceType GetType() const { return type; }
     Vector2 GetPosition() const { return Vector2{static_cast<float>(x), static_cast<float>(y)}; }
 
-    // Setters
+   
     void SetPosition(int newX, int newY) {
         x = newX;
         y = newY;
