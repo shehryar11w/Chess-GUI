@@ -128,6 +128,7 @@ Game::~Game() {
 
 void Game::Run() {
     while (!WindowShouldClose() && !shouldClose) {
+    while (!WindowShouldClose() && !shouldClose) {
         HandleInput();
 
         if (currentRotation != targetRotation) {
@@ -158,6 +159,12 @@ void Game::Run() {
                     DrawLabels();
                     Draw();
                     DrawPromotionUI();
+                    break;
+                case GAME_OVER:
+                    DrawBoard();
+                    DrawLabels();
+                    Draw();
+                    DrawGameOverUI();
                     break;
                 case GAME_OVER:
                     DrawBoard();
@@ -586,6 +593,7 @@ void Game::MovePiece(int x, int y) {
             Piece* capturedPawn = const_cast<Piece*>(GetPieceAt(x, lastMove.end.y));
             if (capturedPawn) {
                 AddCapturedPiece(capturedPawn->GetType(), capturedPawn->IsWhite());
+                AddCapturedPiece(capturedPawn->GetType(), capturedPawn->IsWhite());
                 if (capturedPawn->IsWhite()) {
                     whiteTeam.RemovePieceAt(x, lastMove.end.y);
                 } else {
@@ -603,6 +611,7 @@ void Game::MovePiece(int x, int y) {
             if (targetPiece->GetType() == PieceType::KING) {
                 return;
             }
+            AddCapturedPiece(targetPiece->GetType(), targetPiece->IsWhite());
             AddCapturedPiece(targetPiece->GetType(), targetPiece->IsWhite());
             if (targetPiece->IsWhite()) {
                 whiteTeam.RemovePieceAt(x, y);
@@ -653,6 +662,7 @@ void Game::MovePiece(int x, int y) {
         if (GetGameState() != PROMOTION) {
             isWhiteTurn = !isWhiteTurn;
             boardRotated = !boardRotated;
+            namesRotated = !namesRotated;
             namesRotated = !namesRotated;
         }
     }
@@ -977,6 +987,8 @@ void Game::DrawMenu() {
 
     const char* title = "Chess++";
     const char* developers = "Developers: Shehryar [24K-0569], Sufyan [24K-0806], Faizan [24K-0571]";
+    const char* title = "Chess++";
+    const char* developers = "Developers: Shehryar [24K-0569], Sufyan [24K-0806], Faizan [24K-0571]";
     const char* playText = "Play";
 
     int titleWidth = MeasureText(title, 60);
@@ -1008,6 +1020,7 @@ void Game::DrawMenu() {
     int buttonWidth = playWidth + 100;
     int buttonHeight = 60;
     int buttonX = (GetScreenWidth() - buttonWidth) / 2;
+    int buttonY = GetScreenHeight() / 2 + 50 + 40 + 40;
     int buttonY = GetScreenHeight() / 2 + 50 + 40 + 40;
     
     Vector2 mousePos = GetMousePosition();
@@ -1168,6 +1181,7 @@ bool Game::IsSquareUnderAttack(int x, int y, bool byWhite, Vector2 ignorePiecePo
             legalMoves.push_back(move);
         }
     }
+
 
     return legalMoves;
 }
