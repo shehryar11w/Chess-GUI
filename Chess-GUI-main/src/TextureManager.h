@@ -3,17 +3,31 @@
 
 #include "raylib.h"
 #include <string>
-#include <unordered_map>
+#include <vector>
 #include <memory>
+
+struct TextureEntry {
+    std::string key;
+    Texture2D texture;
+};
 
 class TextureManager {
 private:
     static TextureManager* instance;
-    std::unordered_map<std::string, Texture2D> textures;
+    std::vector<TextureEntry> textures;  
     bool initialized;
 
-    
     TextureManager() : initialized(false) {}
+
+    
+    int GetTextureIndex(const std::string& key) {
+        for (size_t i = 0; i < textures.size(); ++i) {
+            if (textures[i].key == key) {
+                return i;
+            }
+        }
+        return -1; 
+    }
 
 public:
     static TextureManager* GetInstance() {
@@ -25,9 +39,9 @@ public:
 
     void Initialize() {
         if (!initialized) {
-            
             Image whitePixel = GenImageColor(32, 32, WHITE);
-            textures["default"] = LoadTextureFromImage(whitePixel);
+            TextureEntry defaultTexture = {"default", LoadTextureFromImage(whitePixel)};
+            textures.push_back(defaultTexture);
             UnloadImage(whitePixel);
             initialized = true;
         }
@@ -51,21 +65,19 @@ public:
         }
 
         
-        auto it = textures.find(key);
-        if (it != textures.end()) {
-            return it->second;
+        int index = GetTextureIndex(key);
+        if (index != -1) {
+            return textures[index].texture;
         }
 
         
         Texture2D tex = LoadTexture(filepath.c_str());
-        
-        
         if (tex.id == 0) {
             TraceLog(LOG_WARNING, "Failed to load texture: %s", filepath.c_str());
-            return textures["default"];
+            return textures[0].texture;  
         }
 
-        textures[key] = tex;
+        textures.push_back({key, tex});
         return tex;
     }
 
@@ -74,14 +86,14 @@ public:
             Initialize();
         }
 
-        auto it = textures.find(key);
-        return (it != textures.end()) ? it->second : textures["default"];
+        int index = GetTextureIndex(key);
+        return (index != -1) ? textures[index].texture : textures[0].texture;  
     }
 
     void UnloadAllTextures() {
-        for (auto& [key, texture] : textures) {
-            if (texture.id > 0) {
-                UnloadTexture(texture);
+        for (auto& entry : textures) {
+            if (entry.texture.id > 0) {
+                UnloadTexture(entry.texture);
             }
         }
         textures.clear();
@@ -89,4 +101,4 @@ public:
     }
 };
 
-#endif 
+#endif
