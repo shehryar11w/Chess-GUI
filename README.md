@@ -1,43 +1,69 @@
-# Chess GUI - Game
+# Chess Game
 
-A simple and interactive Chess Game using **Raylib** as a graphics library for the GUI. This project provides an easy-to-use interface for playing chess and is cross-platform, supporting Windows, Linux, and MacOS.
+A complete Chess Game built using **C++** and **Raylib** library for graphics. This project offers a rich, interactive, and visually appealing platform to play chess locally.
 
-## Features
-- **Chess Game Logic**: Implements the basic rules of Chess, including piece movements, checks, and checkmates.
-- **GUI Interface**: Built with Raylib for rendering the chessboard and pieces. A simple but effective interface to interact with the game.
-- **Game Management**: Ability to start a new game, undo moves, and view game status (check/checkmate).
-- **AI Integration** (Optional): Includes a basic AI for playing against the computer (can be turned off).
-- **Multiplayer**: Allows two players to play locally on the same machine.
+---
 
-## Supported Platforms
-- **Windows**
-- **Linux**
-- **MacOS**
+## 🚀 Project Overview
 
-## Installation
+This Chess Game implements all official chess rules, including special moves like **en passant** and **pawn promotion**, with a focus on providing a smooth user experience. Players can enjoy local multiplayer, a responsive interface, and sound effects for a more immersive experience. The game features both **board rotation**, **fullscreen mode**, and the ability to **display captured pieces**.
+
+---
+
+## 💡 Features
+
+### Core Features:
+- **Full Chess Rules**: Includes all standard chess moves, as well as special rules like pawn promotion, en passant, check, checkmate, and stalemate.
+- **Local Multiplayer**: Two players can play on the same machine.
+- **Pawn Promotion**: Automatically promotes pawns to Queens.
+- **En Passant**: Implemented according to chess rules.
+- **Check/Checkmate/Stalemate**: Detects check, checkmate, and stalemate conditions.
+- **Enhanced User Interface**: Includes menus for player names, a quit button, and captured pieces display.
+- **Sound Effects**: Adds sound feedback on moves for a better user experience.
+- **Fullscreen and Rotation**: Supports rotating the chessboard and fullscreen mode for a more realistic experience.
+
+---
+
+## 🛠️ Tools and Technologies
+
+- **Programming Language**: C++
+- **Graphics Library**: Raylib
+- **Platform**: Desktop (Windows)
+- **Version Control**: GitHub
+- **Communication**: WhatsApp group, Trello board for task tracking
+
+---
+
+## 📜 Project Team
+
+- **Shehryar Rafiq** (Group Leader): Setup of Raylib environment, board drawing, piece movement, board rotation, fullscreen mode.
+- **Faizan Basheer**: Pawn promotion, en passant move logic, check detection, sound effects integration.
+- **Syed Muhammad Sufyan**: Checkmate and stalemate detection, enhanced interface, player name input, captured pieces display.
+
+---
+
+## 💻 Installation
 
 ### Windows
 1. **Download MinGW-W64** (if not already installed):
-   - Go to [W64devkit](https://github.com/skeeto/w64devkit/releases) or use the version that comes with Raylib installer.
-   
+   - Go to https://github.com/skeeto/w64devkit/releases or use the version that comes with Raylib installer.
+
 2. **Build Instructions for MinGW-W64**:
    - Open **Git Bash** or **Command Prompt**.
    - Navigate to the project folder:
      ```bash
      cd "C:\path\to\Chess-GUI-main"
      ```
-   - Run the following to build the project:
+   - Run the following command to build the project:
      ```bash
      make
      ```
 
-3. **Build Instructions for Microsoft Visual Studio**:
-   - Run `build-VisualStudio2022.bat`.
-   - Open the generated `.sln` file and build the project in Visual Studio.
+---
 
 ### Linux
 1. **Install Dependencies**:
-   - Ensure that **premake5** is installed. You can get it from [premake.github.io](https://premake.github.io/).
+   - Ensure **premake5** is installed from https://premake.github.io/.
 
 2. **Build Instructions**:
    - Open a terminal and navigate to the project folder:
@@ -50,9 +76,11 @@ A simple and interactive Chess Game using **Raylib** as a graphics library for t
      make
      ```
 
+---
+
 ### MacOS
 1. **Install Dependencies**:
-   - Ensure that **premake5** is installed. You can install it using Homebrew:
+   - Use Homebrew to install **premake5**:
      ```bash
      brew install premake
      ```
@@ -62,30 +90,55 @@ A simple and interactive Chess Game using **Raylib** as a graphics library for t
      ```bash
      cd "path/to/Chess-GUI-main"
      ```
-   - Run the following commands:
+   - Run:
      ```bash
      ./premake5.osx gmake2
      make
      ```
 
-## Usage
+---
 
-- **Start a New Game**: Once the game is built, execute the binary to start a new game. A chessboard will appear, and you can interact with it to move pieces.
-- **Multiplayer**: Simply use the mouse or keyboard to move pieces.
-- **AI Play** (if enabled): Play against the AI by moving pieces for the player side, and the AI will respond with its move.
-- **Undo Move**: Press the "Undo" button to revert to the previous game state.
-- **Game Status**: The game will display whether the current game is in check or checkmate.
+## 🎮 Usage
 
-## Changing to C++
-If you want to switch from C to C++, simply rename `src/main.c` to `src/main.cpp` and perform a clean build.
+- **Start a New Game**: Launch the built executable to start the game.
+- **Multiplayer**: Use mouse or keyboard for moving pieces.
+- **Sound Effects**: Each move has sound feedback.
+- **Board Rotation**: Rotate the board for a different perspective.
+- **Captured Pieces**: See captured pieces for both players.
+- **Check/Checkmate**: The game detects check, checkmate, and stalemate.
 
-## Customizing the Chess Game
-- **Replace Main Code**: You can replace `src/main.c` with your own code while keeping the existing setup, and then build the project again.
-- **Add Custom Resources**: The project includes a `resources` folder for storing assets like images and sounds. You can replace the default assets with your own if needed.
+---
 
-## Building for Different OpenGL Versions
-If you need to build for a different OpenGL version than the default **OpenGL 3.3**, modify the **premake** command line or use the following options:
+## 🔧 Future Work & Improvements
 
-- For OpenGL 1.1:
-  ```bash
-  --graphics=opengl11
+- **AI Opponent**: Add an AI opponent to enable single-player mode.
+- **Save/Load**: Implement save and load functionality to resume games.
+- **Multiple Pawn Promotions**: Allow promotion to different pieces, not just the Queen.
+- **Online Multiplayer**: Add support for online multiplayer matches.
+
+---
+
+## 📚 Conclusion
+
+We successfully developed a **full chess game** with all essential features, including:
+- Correct chess logic
+- Special rules like **pawn promotion** and **en passant**
+- **Checkmate** and **stalemate** detection
+- Enhanced user interface, **captured pieces display**, and **sound effects**
+- **Fullscreen mode** and **board rotation**
+
+### Key Features Recap:
+- Full Chess Rule Implementation
+- Smooth Movement and Sound Feedback
+- Player Name Input Menu
+- Captured Pieces Display
+- Checkmate and Stalemate Detection
+- Fullscreen Mode and Board Rotation
+
+---
+
+## 💬 Acknowledgments
+
+We'd like to thank our instructors for their support, and Raylib for providing a great platform for game development.
+
+---
