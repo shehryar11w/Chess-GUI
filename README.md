@@ -15,7 +15,7 @@ This Chess Game implements all official chess rules, including special moves lik
 ### Core Features:
 - **Full Chess Rules**: Includes all standard chess moves, as well as special rules like pawn promotion, en passant, check, checkmate, and stalemate.
 - **Local Multiplayer**: Two players can play on the same machine.
-- **Pawn Promotion**: Automatically promotes pawns to Queens.
+- **Pawn Promotion**: Automatically promotes pawns based on player choice.
 - **En Passant**: Implemented according to chess rules.
 - **Check/Checkmate/Stalemate**: Detects check, checkmate, and stalemate conditions.
 - **Enhanced User Interface**: Includes menus for player names, a quit button, and captured pieces display.
@@ -30,7 +30,7 @@ This Chess Game implements all official chess rules, including special moves lik
 - **Graphics Library**: Raylib
 - **Platform**: Desktop (Windows)
 - **Version Control**: GitHub
-- **Communication**: WhatsApp group, Trello board for task tracking
+- **Communication**: WhatsApp group.
 
 ---
 
@@ -113,7 +113,6 @@ This Chess Game implements all official chess rules, including special moves lik
 
 - **AI Opponent**: Add an AI opponent to enable single-player mode.
 - **Save/Load**: Implement save and load functionality to resume games.
-- **Multiple Pawn Promotions**: Allow promotion to different pieces, not just the Queen.
 - **Online Multiplayer**: Add support for online multiplayer matches.
 
 ---
