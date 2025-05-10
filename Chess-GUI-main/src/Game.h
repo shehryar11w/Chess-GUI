@@ -45,6 +45,7 @@ private:
     Sound checkSound;
     Sound promotionSound;
     Texture2D backgroundTexture;  
+    Font gameFont;
 
     
     std::vector<PieceType> whiteCapturedPieces;

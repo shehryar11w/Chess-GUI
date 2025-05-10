@@ -24,6 +24,7 @@ Sound stalemateSound;
 Texture2D backgroundTexture;
 Texture2D menuBackgroundTexture;
 Texture2D profileTexture;  
+Font gameFont;
 
 
 char whitePlayerName[32] = "";
@@ -59,6 +60,9 @@ Game::Game() :
     
     InitAudioDevice();
 
+    // Load custom font
+    gameFont = LoadFont("assets/font.ttf");  // Make sure to add your font file to the assets folder
+    SetTextureFilter(gameFont.texture, TEXTURE_FILTER_BILINEAR);
     
     moveSound = LoadSound("assets/move.mp3");
 
@@ -143,6 +147,9 @@ Game::~Game() {
 
     
     UnloadTexture(profileTexture);
+
+    // Unload custom font
+    UnloadFont(gameFont);
 
     
     CloseAudioDevice();
@@ -383,7 +390,7 @@ void Game::HandleInput() {
 
             
             const char* playText = "Play";
-            int playWidth = MeasureText(playText, 40);
+            int playWidth = MeasureTextEx(gameFont, playText, 40, 0).x;
             int buttonWidth = playWidth + 100;  
             int buttonHeight = 60;
             int buttonX = (GetScreenWidth() - buttonWidth) / 2;
@@ -490,8 +497,8 @@ void Game::HandleInput() {
             const char* exitText = "Exit";
             const char* playAgainText = "Play Again";
             
-            int exitWidth = MeasureText(exitText, 30) + BUTTON_PADDING * 2;
-            int playAgainWidth = MeasureText(playAgainText, 30) + BUTTON_PADDING * 2;
+            int exitWidth = MeasureTextEx(gameFont, exitText, 30, 0).x + BUTTON_PADDING * 2;
+            int playAgainWidth = MeasureTextEx(gameFont, playAgainText, 30, 0).x + BUTTON_PADDING * 2;
             
             int totalWidth = exitWidth + playAgainWidth + 50;
             int startX = centerX - totalWidth / 2;
@@ -895,22 +902,20 @@ void Game::DrawLabels() {
             
             
             const char* blackHeader = "Black's Captures";
-            int blackHeaderWidth = MeasureText(blackHeader, CAPTURED_HEADER_SIZE);
-            DrawText(blackHeader,
-                rightSectionX + CAPTURED_SECTION_WIDTH / 2 - blackHeaderWidth / 2,
-                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
-                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+            int blackHeaderWidth = MeasureTextEx(gameFont, blackHeader, CAPTURED_HEADER_SIZE, 0).x;
+            DrawTextEx(gameFont, blackHeader,
+                Vector2{(float)(rightSectionX + CAPTURED_SECTION_WIDTH / 2 - blackHeaderWidth / 2), (float)(capturedY - CAPTURED_HEADER_VERTICAL_OFFSET)},
+                CAPTURED_HEADER_SIZE, 0, LABEL_COLOR);
 
             
             drawCapturedPieces(blackCapturedPieces, rightSectionX, capturedY, false);
 
             
             const char* whiteHeader = "White's Captures";
-            int whiteHeaderWidth = MeasureText(whiteHeader, CAPTURED_HEADER_SIZE);
-            DrawText(whiteHeader,
-                leftSectionX + CAPTURED_SECTION_WIDTH / 2 - whiteHeaderWidth / 2,
-                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
-                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+            int whiteHeaderWidth = MeasureTextEx(gameFont, whiteHeader, CAPTURED_HEADER_SIZE, 0).x;
+            DrawTextEx(gameFont, whiteHeader,
+                Vector2{(float)(leftSectionX + CAPTURED_SECTION_WIDTH / 2 - whiteHeaderWidth / 2), (float)(capturedY - CAPTURED_HEADER_VERTICAL_OFFSET)},
+                CAPTURED_HEADER_SIZE, 0, LABEL_COLOR);
 
             
             drawCapturedPieces(whiteCapturedPieces, leftSectionX, capturedY, true);
@@ -918,22 +923,20 @@ void Game::DrawLabels() {
             
             
             const char* whiteHeader = "White's Captures";
-            int whiteHeaderWidth = MeasureText(whiteHeader, CAPTURED_HEADER_SIZE);
-            DrawText(whiteHeader,
-                rightSectionX + CAPTURED_SECTION_WIDTH / 2 - whiteHeaderWidth / 2,
-                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
-                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+            int whiteHeaderWidth = MeasureTextEx(gameFont, whiteHeader, CAPTURED_HEADER_SIZE, 0).x;
+            DrawTextEx(gameFont, whiteHeader,
+                Vector2{(float)(rightSectionX + CAPTURED_SECTION_WIDTH / 2 - whiteHeaderWidth / 2), (float)(capturedY - CAPTURED_HEADER_VERTICAL_OFFSET)},
+                CAPTURED_HEADER_SIZE, 0, LABEL_COLOR);
 
             
             drawCapturedPieces(whiteCapturedPieces, rightSectionX, capturedY, true);
 
             
             const char* blackHeader = "Black's Captures";
-            int blackHeaderWidth = MeasureText(blackHeader, CAPTURED_HEADER_SIZE);
-            DrawText(blackHeader,
-                leftSectionX + CAPTURED_SECTION_WIDTH / 2 - blackHeaderWidth / 2,
-                capturedY - CAPTURED_HEADER_VERTICAL_OFFSET,
-                CAPTURED_HEADER_SIZE, LABEL_COLOR);
+            int blackHeaderWidth = MeasureTextEx(gameFont, blackHeader, CAPTURED_HEADER_SIZE, 0).x;
+            DrawTextEx(gameFont, blackHeader,
+                Vector2{(float)(leftSectionX + CAPTURED_SECTION_WIDTH / 2 - blackHeaderWidth / 2), (float)(capturedY - CAPTURED_HEADER_VERTICAL_OFFSET)},
+                CAPTURED_HEADER_SIZE, 0, LABEL_COLOR);
 
             
             drawCapturedPieces(blackCapturedPieces, leftSectionX, capturedY, false);
@@ -950,14 +953,14 @@ void Game::DrawLabels() {
     Rectangle sourceRec = { 0, 0, (float)profileTexture.width, (float)profileTexture.height };
     Rectangle destRec = { (float)offsetX, (float)activeProfileY, (float)PROFILE_SIZE, (float)PROFILE_SIZE };
     DrawTexturePro(profileTexture, sourceRec, destRec, {0, 0}, 0.0f, WHITE);
-    DrawText(activePlayerName, offsetX + PROFILE_SIZE + NAME_MARGIN, activeProfileY + (PROFILE_SIZE - PLAYER_NAME_SIZE) / 2, PLAYER_NAME_SIZE, LABEL_COLOR);
+    DrawTextEx(gameFont, activePlayerName, Vector2{(float)(offsetX + PROFILE_SIZE + NAME_MARGIN), (float)(activeProfileY + (PROFILE_SIZE - PLAYER_NAME_SIZE) / 2)}, PLAYER_NAME_SIZE, 0, LABEL_COLOR);
 
     
     int inactiveProfileY = offsetY - PROFILE_SIZE - LABEL_MARGIN - VERTICAL_PADDING;
     
     destRec = { (float)offsetX, (float)inactiveProfileY, (float)PROFILE_SIZE, (float)PROFILE_SIZE };
     DrawTexturePro(profileTexture, sourceRec, destRec, {0, 0}, 0.0f, WHITE);
-    DrawText(inactivePlayerName, offsetX + PROFILE_SIZE + NAME_MARGIN, inactiveProfileY + (PROFILE_SIZE - PLAYER_NAME_SIZE) / 2, PLAYER_NAME_SIZE, LABEL_COLOR);
+    DrawTextEx(gameFont, inactivePlayerName, Vector2{(float)(offsetX + PROFILE_SIZE + NAME_MARGIN), (float)(inactiveProfileY + (PROFILE_SIZE - PLAYER_NAME_SIZE) / 2)}, PLAYER_NAME_SIZE, 0, LABEL_COLOR);
 
     
     for (int y = 0; y < BOARD_SIZE; y++) {
@@ -967,20 +970,12 @@ void Game::DrawLabels() {
         char label[2] = {rankLabel, '\0'};
         
         
-        DrawText(  
-            label,
-            offsetX - LABEL_SIZE - LABEL_MARGIN * 3 + SHADOW_OFFSET,
-            offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET,
-            LABEL_SIZE,
-            SHADOW_COLOR
-        );
-        DrawText(  
-            label,
-            offsetX - LABEL_SIZE - LABEL_MARGIN * 3,
-            offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
-            LABEL_SIZE,
-            LABEL_COLOR
-        );
+        DrawTextEx(gameFont, label,
+            Vector2{(float)(offsetX - LABEL_SIZE - LABEL_MARGIN * 3 + SHADOW_OFFSET), (float)(offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET)},
+            LABEL_SIZE, 0, SHADOW_COLOR);
+        DrawTextEx(gameFont, label,
+            Vector2{(float)(offsetX - LABEL_SIZE - LABEL_MARGIN * 3), (float)(offsetY + y * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2)},
+            LABEL_SIZE, 0, LABEL_COLOR);
     }
 
     
@@ -991,20 +986,12 @@ void Game::DrawLabels() {
         char label[2] = {colLabel, '\0'};
         
         
-        DrawText(  
-            label,
-            offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET,
-            offsetY + boardPixelSize + LABEL_MARGIN + SHADOW_OFFSET,
-            LABEL_SIZE,
-            SHADOW_COLOR
-        );
-        DrawText(  
-            label,
-            offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2,
-            offsetY + boardPixelSize + LABEL_MARGIN,
-            LABEL_SIZE,
-            LABEL_COLOR
-        );
+        DrawTextEx(gameFont, label,
+            Vector2{(float)(offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2 + SHADOW_OFFSET), (float)(offsetY + boardPixelSize + LABEL_MARGIN + SHADOW_OFFSET)},
+            LABEL_SIZE, 0, SHADOW_COLOR);
+        DrawTextEx(gameFont, label,
+            Vector2{(float)(offsetX + x * TILE_SIZE + (TILE_SIZE - LABEL_SIZE) / 2), (float)(offsetY + boardPixelSize + LABEL_MARGIN)},
+            LABEL_SIZE, 0, LABEL_COLOR);
     }
 
     
@@ -1016,7 +1003,7 @@ void Game::DrawLabels() {
         const int RESIGN_TEXT_SIZE = 20;
         
         
-        int textWidth = MeasureText(resignText, RESIGN_TEXT_SIZE);
+        int textWidth = MeasureTextEx(gameFont, resignText, RESIGN_TEXT_SIZE, 0).x;
         
         
         int resignX = offsetX + boardPixelSize - RESIGN_BUTTON_WIDTH;  
@@ -1044,10 +1031,9 @@ void Game::DrawLabels() {
         DrawRectangleRec(resignButton, buttonColor);
         
         
-        DrawText(resignText,
-            resignX + (RESIGN_BUTTON_WIDTH - textWidth) / 2,
-            resignY + (RESIGN_BUTTON_HEIGHT - RESIGN_TEXT_SIZE) / 2,
-            RESIGN_TEXT_SIZE, BLACK);
+        DrawTextEx(gameFont, resignText,
+            Vector2{(float)(resignX + (RESIGN_BUTTON_WIDTH - textWidth) / 2), (float)(resignY + (RESIGN_BUTTON_HEIGHT - RESIGN_TEXT_SIZE) / 2)},
+            RESIGN_TEXT_SIZE, 0, BLACK);
     }
 }
 
@@ -1121,19 +1107,17 @@ void Game::DrawMenu() {
     const char* developers = "Developers: Shehryar [24K-0569], Sufyan [24K-0806], Faizan [24K-0571]";
     const char* playText = "Play";
 
-    int titleWidth = MeasureText(title, 60);  
-    int devWidth = MeasureText(developers, 35);
-    int playWidth = MeasureText(playText, 40);  
+    int titleWidth = MeasureTextEx(gameFont, title, 60, 0).x;  
+    int devWidth = MeasureTextEx(gameFont, developers, 35, 0).x;
+    int playWidth = MeasureTextEx(gameFont, playText, 40, 0).x;  
 
     
-    DrawText(title, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 8, 60, RAYWHITE);
+    DrawTextEx(gameFont, title, Vector2{(float)(GetScreenWidth() - titleWidth) / 2, (float)GetScreenHeight() / 8}, 60, 0, RAYWHITE);
 
     
-    DrawText(developers, 
-        (GetScreenWidth() - devWidth) / 2,
-        GetScreenHeight() / 6 + 60,
-        35,
-        RAYWHITE
+    DrawTextEx(gameFont, developers, 
+        Vector2{(float)(GetScreenWidth() - devWidth) / 2, (float)GetScreenHeight() / 6 + 60},
+        35, 0, RAYWHITE
     );
 
     
@@ -1143,14 +1127,14 @@ void Game::DrawMenu() {
     int inputY = GetScreenHeight() / 3 + 50;  
 
     
-    DrawText("White Player Name:", inputX, inputY - 40, 25, RAYWHITE);  
+    DrawTextEx(gameFont, "White Player Name:", Vector2{(float)inputX, (float)(inputY - 40)}, 25, 0, RAYWHITE);  
     DrawRectangle(inputX, inputY, inputWidth, inputHeight, whiteNameActive ? LIGHTGRAY : RAYWHITE);
-    DrawText(whitePlayerName, inputX + 15, inputY + 12, 25, BLACK);  
+    DrawTextEx(gameFont, whitePlayerName, Vector2{(float)(inputX + 15), (float)(inputY + 12)}, 25, 0, BLACK);  
 
     
-    DrawText("Black Player Name:", inputX, inputY + 80 + 20, 25, RAYWHITE);  
+    DrawTextEx(gameFont, "Black Player Name:", Vector2{(float)inputX, (float)(inputY + 80 + 20)}, 25, 0, RAYWHITE);  
     DrawRectangle(inputX, inputY + 120 + 20, inputWidth, inputHeight, blackNameActive ? LIGHTGRAY : RAYWHITE);
-    DrawText(blackPlayerName, inputX + 15, inputY + 135 + 20 - 3, 25, BLACK);  
+    DrawTextEx(gameFont, blackPlayerName, Vector2{(float)(inputX + 15), (float)(inputY + 135 + 20 - 3)}, 25, 0, BLACK);  
 
     
     int buttonWidth = playWidth + 100;  
@@ -1168,22 +1152,18 @@ void Game::DrawMenu() {
     DrawRectangle(buttonX, buttonY, buttonWidth, buttonHeight, buttonColor);
     
     
-    DrawText(playText, 
-        buttonX + (buttonWidth - playWidth) / 2,
-        buttonY + (buttonHeight - 40) / 2,  
-        40, 
-        BLACK
+    DrawTextEx(gameFont, playText, 
+        Vector2{(float)(buttonX + (buttonWidth - playWidth) / 2), (float)(buttonY + (buttonHeight - 40) / 2)},
+        40, 0, BLACK
     );
 
     
     if (strlen(whitePlayerName) == 0 || strlen(blackPlayerName) == 0) {
         const char* errorMsg = "Please enter names for both players";
-        int errorWidth = MeasureText(errorMsg, 25);
-        DrawText(errorMsg, 
-            (GetScreenWidth() - errorWidth) / 2,
-            buttonY + buttonHeight + 20 + 40,
-            25,
-            RED
+        int errorWidth = MeasureTextEx(gameFont, errorMsg, 25, 0).x;
+        DrawTextEx(gameFont, errorMsg, 
+            Vector2{(float)(GetScreenWidth() - errorWidth) / 2, (float)(buttonY + buttonHeight + 20 + 40)},
+            25, 0, RED
         );
     }
 }
@@ -1456,8 +1436,8 @@ void Game::DrawGameOverUI() {
 
     
     const char* title = "Game Over!";
-    int titleWidth = MeasureText(title, TITLE_SIZE);
-    DrawText(title, centerX - titleWidth / 2, startY, TITLE_SIZE, TEXT_COLOR);
+    int titleWidth = MeasureTextEx(gameFont, title, TITLE_SIZE, 0).x;
+    DrawTextEx(gameFont, title, Vector2{(float)(centerX - titleWidth / 2), (float)startY}, TITLE_SIZE, 0, TEXT_COLOR);
 
     if (isCheckmate) {
         
@@ -1467,42 +1447,42 @@ void Game::DrawGameOverUI() {
         
         char winnerMsg[100];
         snprintf(winnerMsg, sizeof(winnerMsg), "%s Won!", winnerName);
-        int winnerWidth = MeasureText(winnerMsg, MESSAGE_SIZE);
-        DrawText(winnerMsg, centerX - winnerWidth / 2, startY + LINE_SPACING * 2, MESSAGE_SIZE, TEXT_COLOR);
+        int winnerWidth = MeasureTextEx(gameFont, winnerMsg, MESSAGE_SIZE, 0).x;
+        DrawTextEx(gameFont, winnerMsg, Vector2{(float)(centerX - winnerWidth / 2), (float)(startY + LINE_SPACING * 2)}, MESSAGE_SIZE, 0, TEXT_COLOR);
 
         
         const char* byMsg = "(By Checkmate)";
-        int byWidth = MeasureText(byMsg, MESSAGE_SIZE);
-        DrawText(byMsg, centerX - byWidth / 2, startY + LINE_SPACING * 4 - 27, MESSAGE_SIZE, TEXT_COLOR);
+        int byWidth = MeasureTextEx(gameFont, byMsg, MESSAGE_SIZE, 0).x;
+        DrawTextEx(gameFont, byMsg, Vector2{(float)(centerX - byWidth / 2), (float)(startY + LINE_SPACING * 4 - 27)}, MESSAGE_SIZE, 0, TEXT_COLOR);
 
         
         char congratsMsg[200];
         snprintf(congratsMsg, sizeof(congratsMsg), "Congratulations %s!", winnerName);
-        int congratsWidth = MeasureText(congratsMsg, CONGRATS_SIZE);
-        DrawText(congratsMsg, centerX - congratsWidth / 2, startY + LINE_SPACING * 6, CONGRATS_SIZE, TEXT_COLOR);
+        int congratsWidth = MeasureTextEx(gameFont, congratsMsg, CONGRATS_SIZE, 0).x;
+        DrawTextEx(gameFont, congratsMsg, Vector2{(float)(centerX - congratsWidth / 2), (float)(startY + LINE_SPACING * 6)}, CONGRATS_SIZE, 0, TEXT_COLOR);
 
         
         char luckMsg[200];
         snprintf(luckMsg, sizeof(luckMsg), "Better Luck next time %s", loserName);
-        int luckWidth = MeasureText(luckMsg, CONGRATS_SIZE);
-        DrawText(luckMsg, centerX - luckWidth / 2, startY + LINE_SPACING * 6 + 35, CONGRATS_SIZE, TEXT_COLOR);
+        int luckWidth = MeasureTextEx(gameFont, luckMsg, CONGRATS_SIZE, 0).x;
+        DrawTextEx(gameFont, luckMsg, Vector2{(float)(centerX - luckWidth / 2), (float)(startY + LINE_SPACING * 6 + 35)}, CONGRATS_SIZE, 0, TEXT_COLOR);
 
     } else if (isStalemate) {
         
         const char* stalemateMsg = "Game Ended in a Draw!";
-        int stalemateWidth = MeasureText(stalemateMsg, MESSAGE_SIZE);
-        DrawText(stalemateMsg, centerX - stalemateWidth / 2, startY + LINE_SPACING * 2, MESSAGE_SIZE, TEXT_COLOR);
+        int stalemateWidth = MeasureTextEx(gameFont, stalemateMsg, MESSAGE_SIZE, 0).x;
+        DrawTextEx(gameFont, stalemateMsg, Vector2{(float)(centerX - stalemateWidth / 2), (float)(startY + LINE_SPACING * 2)}, MESSAGE_SIZE, 0, TEXT_COLOR);
 
         
         const char* byMsg = "(By Stalemate)";
-        int byWidth = MeasureText(byMsg, MESSAGE_SIZE);
-        DrawText(byMsg, centerX - byWidth / 2, startY + LINE_SPACING * 4 - 27, MESSAGE_SIZE, TEXT_COLOR);
+        int byWidth = MeasureTextEx(gameFont, byMsg, MESSAGE_SIZE, 0).x;
+        DrawTextEx(gameFont, byMsg, Vector2{(float)(centerX - byWidth / 2), (float)(startY + LINE_SPACING * 4 - 27)}, MESSAGE_SIZE, 0, TEXT_COLOR);
 
         
         char playersMsg[200];
         snprintf(playersMsg, sizeof(playersMsg), "Well played %s and %s!", whitePlayerName, blackPlayerName);
-        int playersWidth = MeasureText(playersMsg, CONGRATS_SIZE);
-        DrawText(playersMsg, centerX - playersWidth / 2, startY + LINE_SPACING * 6, CONGRATS_SIZE, TEXT_COLOR);
+        int playersWidth = MeasureTextEx(gameFont, playersMsg, CONGRATS_SIZE, 0).x;
+        DrawTextEx(gameFont, playersMsg, Vector2{(float)(centerX - playersWidth / 2), (float)(startY + LINE_SPACING * 6)}, CONGRATS_SIZE, 0, TEXT_COLOR);
     } else if (isResignation) {
         
         const char* winnerName = isWhiteTurn ? blackPlayerName : whitePlayerName;
@@ -1511,33 +1491,33 @@ void Game::DrawGameOverUI() {
         
         char winnerMsg[100];
         snprintf(winnerMsg, sizeof(winnerMsg), "%s Won!", winnerName);
-        int winnerWidth = MeasureText(winnerMsg, MESSAGE_SIZE);
-        DrawText(winnerMsg, centerX - winnerWidth / 2, startY + LINE_SPACING * 2, MESSAGE_SIZE, TEXT_COLOR);
+        int winnerWidth = MeasureTextEx(gameFont, winnerMsg, MESSAGE_SIZE, 0).x;
+        DrawTextEx(gameFont, winnerMsg, Vector2{(float)(centerX - winnerWidth / 2), (float)(startY + LINE_SPACING * 2)}, MESSAGE_SIZE, 0, TEXT_COLOR);
 
         
         const char* byMsg = "(By Resignation of Opponent)";
-        int byWidth = MeasureText(byMsg, MESSAGE_SIZE);
-        DrawText(byMsg, centerX - byWidth / 2, startY + LINE_SPACING * 4 - 27, MESSAGE_SIZE, TEXT_COLOR);
+        int byWidth = MeasureTextEx(gameFont, byMsg, MESSAGE_SIZE, 0).x;
+        DrawTextEx(gameFont, byMsg, Vector2{(float)(centerX - byWidth / 2), (float)(startY + LINE_SPACING * 4 - 27)}, MESSAGE_SIZE, 0, TEXT_COLOR);
 
         
         char congratsMsg[200];
         snprintf(congratsMsg, sizeof(congratsMsg), "Congratulations %s!", winnerName);
-        int congratsWidth = MeasureText(congratsMsg, CONGRATS_SIZE);
-        DrawText(congratsMsg, centerX - congratsWidth / 2, startY + LINE_SPACING * 6, CONGRATS_SIZE, TEXT_COLOR);
+        int congratsWidth = MeasureTextEx(gameFont, congratsMsg, CONGRATS_SIZE, 0).x;
+        DrawTextEx(gameFont, congratsMsg, Vector2{(float)(centerX - congratsWidth / 2), (float)(startY + LINE_SPACING * 6)}, CONGRATS_SIZE, 0, TEXT_COLOR);
 
         
         char luckMsg[200];
         snprintf(luckMsg, sizeof(luckMsg), "Do not give up like that next time %s!", loserName);
-        int luckWidth = MeasureText(luckMsg, CONGRATS_SIZE);
-        DrawText(luckMsg, centerX - luckWidth / 2, startY + LINE_SPACING * 6 + 35, CONGRATS_SIZE, TEXT_COLOR);
+        int luckWidth = MeasureTextEx(gameFont, luckMsg, CONGRATS_SIZE, 0).x;
+        DrawTextEx(gameFont, luckMsg, Vector2{(float)(centerX - luckWidth / 2), (float)(startY + LINE_SPACING * 6 + 35)}, CONGRATS_SIZE, 0, TEXT_COLOR);
     }
 
     
     const char* exitText = "Exit";
     const char* playAgainText = "Play Again";
     
-    int exitWidth = MeasureText(exitText, 30) + BUTTON_PADDING * 2;
-    int playAgainWidth = MeasureText(playAgainText, 30) + BUTTON_PADDING * 2;
+    int exitWidth = MeasureTextEx(gameFont, exitText, 30, 0).x + BUTTON_PADDING * 2;
+    int playAgainWidth = MeasureTextEx(gameFont, playAgainText, 30, 0).x + BUTTON_PADDING * 2;
     
     int totalWidth = exitWidth + playAgainWidth + 50; 
     int startX = centerX - totalWidth / 2;
@@ -1568,15 +1548,11 @@ void Game::DrawGameOverUI() {
     DrawRectangleRec(playAgainButton, playAgainColor);
 
     
-    DrawText(exitText, 
-        exitButton.x + (exitButton.width - MeasureText(exitText, 30)) / 2,
-        exitButton.y + (exitButton.height - 30) / 2,
-        30, BLACK);
+    int exitTextWidth = MeasureTextEx(gameFont, exitText, 30, 0).x;
+    int playAgainTextWidth = MeasureTextEx(gameFont, playAgainText, 30, 0).x;
 
-    DrawText(playAgainText,
-        playAgainButton.x + (playAgainButton.width - MeasureText(playAgainText, 30)) / 2,
-        playAgainButton.y + (playAgainButton.height - 30) / 2,
-        30, BLACK);
+    DrawTextEx(gameFont, exitText, Vector2{exitButton.x + (exitButton.width - exitTextWidth) / 2, exitButton.y + (exitButton.height - 30) / 2}, 30, 0, BLACK);
+    DrawTextEx(gameFont, playAgainText, Vector2{playAgainButton.x + (playAgainButton.width - playAgainTextWidth) / 2, playAgainButton.y + (playAgainButton.height - 30) / 2}, 30, 0, BLACK);
 }
 
 void Game::AddCapturedPiece(PieceType type, bool isWhite) {
